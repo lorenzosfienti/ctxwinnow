@@ -42,6 +42,18 @@ func TestParseBash(t *testing.T) {
 		{"pipe-ampersand", `make |& tee log`,
 			[][][]string{{{"make"}, {"tee", "log"}}}},
 		{"empty input", ``, nil},
+		{"subshell splits into pipelines", `(a; b)`,
+			[][][]string{{{"a"}}, {{"b"}}}},
+		{"braces are not split", `echo {a,b}`,
+			[][][]string{{{"echo", "{a,b}"}}}},
+		{"process substitution opaque", `diff <(sort a) b`,
+			[][][]string{{{"diff", "<(sort a)", "b"}}}},
+		{"leading semicolon produces no empty pipeline", `;ls`,
+			[][][]string{{{"ls"}}}},
+		{"leading double semicolon produces no empty pipeline", `;;ls`,
+			[][][]string{{{"ls"}}}},
+		{"leading and-then produces no empty pipeline", `&& ls`,
+			[][][]string{{{"ls"}}}},
 	}
 	for _, tc := range tests {
 		got, ok := parseBash(tc.src)

@@ -158,11 +158,20 @@ func scriptHead(script string, depth int) string {
 
 var assignRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*=`)
 
-// peel strips variable assignments and wrapper commands (sudo, env, timeout, ...) from a simple
-// command and returns the program that actually runs. For bash/sh/zsh -c it returns the script.
+// shellReserved lists shell reserved words that can head a simple command without producing any
+// output of their own; peel skips them to reach the real command, if any.
+var shellReserved = map[string]bool{
+	"do": true, "then": true, "else": true, "elif": true, "if": true, "while": true, "until": true,
+	"!": true, "{": true, "}": true, "done": true, "fi": true, "esac": true,
+}
+
+// peel strips variable assignments, leading shell reserved words and wrapper commands (sudo,
+// env, timeout, ...) from a simple command and returns the program that actually runs. For
+// bash/sh/zsh -c it returns the script. A loop or case header (for/select/case) produces no
+// output of its own, so it returns no program.
 func peel(words []string) (prog string, args []string, script string, isShell bool) {
 	for {
-		for len(words) > 0 && assignRe.MatchString(words[0]) {
+		for len(words) > 0 && (assignRe.MatchString(words[0]) || shellReserved[words[0]]) {
 			words = words[1:]
 		}
 		if len(words) == 0 {
@@ -170,6 +179,8 @@ func peel(words []string) (prog string, args []string, script string, isShell bo
 		}
 		name, rest := path.Base(words[0]), words[1:]
 		switch name {
+		case "for", "select", "case":
+			return "", nil, "", false // loop/case header: no output of its own
 		case "sudo":
 			words = skipFlags(rest, "u", "g", "C", "h", "p", "U")
 		case "env":

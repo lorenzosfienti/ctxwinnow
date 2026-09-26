@@ -99,6 +99,15 @@ func parseBash(src string) (pipelines [][][]string, ok bool) {
 			word.WriteString(src[i : end+1])
 			inWord = true
 			i = end + 1
+		case (c == '<' || c == '>') && i+1 < len(src) && src[i+1] == '(':
+			// process substitution: <(...) / >(...) is kept opaque, like $(...).
+			end, found := matchParen(src, i+1)
+			if !found {
+				return nil, false
+			}
+			word.WriteString(src[i : end+1])
+			inWord = true
+			i = end + 1
 		case c == '`':
 			end := strings.IndexByte(src[i+1:], '`')
 			if end < 0 {
@@ -108,6 +117,11 @@ func parseBash(src string) (pipelines [][][]string, ok bool) {
 			inWord = true
 			i += end + 2
 		case c == ';':
+			endPipeline()
+			i++
+		case c == '(' || c == ')':
+			// unquoted parens are subshell/grouping boundaries: end the current pipeline.
+			// $(...), `...`, <(...) and >(...) are already consumed opaquely above.
 			endPipeline()
 			i++
 		case c == '|':

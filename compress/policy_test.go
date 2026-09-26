@@ -65,6 +65,16 @@ func TestPolicy(t *testing.T) {
 		{"xargs grep", "Bash", bashInput("xargs -0 grep -l foo"), false, PassBashSearch},
 		{"search beats compress", "Bash", bashInput("make test && ls dist"), false, PassBashSearch},
 		{"unbalanced quote", "Bash", bashInput(`echo "oops`), false, PassUnparseable},
+		{"for-loop cat", "Bash", bashInput(`for f in a b; do cat "$f"; done`), false, PassBashRead},
+		{"while-read cat", "Bash", bashInput(`while read f; do cat "$f"; done`), false, PassBashRead},
+		{"if-then cat", "Bash", bashInput(`if grep -q x f; then cat y; fi`), false, PassBashRead},
+		{"subshell cd and read", "Bash", bashInput(`(cd /repo && git diff)`), false, PassBashRead},
+		{"subshell cd and search", "Bash", bashInput(`(cd x && ls)`), false, PassBashSearch},
+		{"brace group cat", "Bash", bashInput(`{ cat a; }`), false, PassBashRead},
+		{"for-loop wc is not a read verb", "Bash", bashInput(`for f in *.log; do wc -l "$f"; done`), false, Compress},
+		{"process substitution opaque", "Bash", bashInput(`diff <(sort a) <(sort b)`), false, Compress},
+		{"bash -c subshell cat", "Bash", bashInput(`bash -c '(cat f)'`), false, PassBashRead},
+		{"brace word not split", "Bash", bashInput(`echo {a,b}`), false, Compress},
 	}
 	for _, tc := range tests {
 		got, note := Policy(tc.tool, tc.input, tc.isErr)
@@ -85,6 +95,7 @@ func TestBashHead(t *testing.T) {
 		bashInput("export A=1; source env.sh; make build"): "make",
 		bashInput(`echo "oops`):                            "",
 		`{`:                                                "",
+		bashInput("for f in a; do go test; done"):          "go",
 	}
 	for in, want := range tests {
 		if got := BashHead(in); got != want {
