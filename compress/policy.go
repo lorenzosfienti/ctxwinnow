@@ -150,10 +150,20 @@ func scriptHead(script string, depth int) string {
 			continue
 		}
 		if prog != "" && !noOutputBuiltins[prog] {
+			if isDynamicHead(prog) {
+				return "(dynamic)"
+			}
 			return prog
 		}
 	}
 	return ""
+}
+
+// isDynamicHead reports whether a would-be head word is not a literal program name but shell
+// text that is only resolved at run time (a substitution, a redirection, ...). Returning such
+// text as a report key would leak command content, so BashHead reports "(dynamic)" instead.
+func isDynamicHead(s string) bool {
+	return strings.ContainsAny(s, "$`(){}<>|;&= \t")
 }
 
 var assignRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*=`)

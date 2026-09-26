@@ -96,6 +96,7 @@ func TestBashHead(t *testing.T) {
 		bashInput(`echo "oops`):                            "",
 		`{`:                                                "",
 		bashInput("for f in a; do go test; done"):          "go",
+		bashInput("$(which python3) x.py"):                 "(dynamic)",
 	}
 	for in, want := range tests {
 		if got := BashHead(in); got != want {

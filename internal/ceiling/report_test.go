@@ -80,11 +80,15 @@ func TestRenderLeaksNoContent(t *testing.T) {
 	s := &transcript.Session{CWD: "/home/u/secret-project", Events: []transcript.Event{
 		tr("Bash", `{"command":"go test ./internal/secretpkg -run TestTOPSECRET"}`, repeatLine("TOPSECRET token=abc123", 400)),
 		usage("u1", 50000),
+		// A dynamic head (a command substitution) must not leak the substituted command or its
+		// argument into the Bash top-sources table: BashHead must report it as "(dynamic)".
+		tr("Bash", `{"command":"$(which python3) TOPSECRETSCRIPT.py"}`, repeatLine("ok line", 600)),
+		usage("u2", 60000),
 	}}
 	a := NewAnalyzer(Options{MinTurns: 1})
 	a.AddSession(s, false)
 	out := render(t, a.Result())
-	for _, leak := range []string{"secret", "TOPSECRET", "abc123", "/home/u"} {
+	for _, leak := range []string{"secret", "TOPSECRET", "abc123", "/home/u", "which", "TOPSECRETSCRIPT"} {
 		if strings.Contains(out, leak) {
 			t.Errorf("report leaks %q", leak)
 		}
