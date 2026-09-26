@@ -5,8 +5,7 @@ binary, and every cut is explained. Portfolio project.
 
 ## Status
 
-- v0.0.1: design done. Step 0 (`ctxwinnow analyze`, go/no-go on how much of real Claude Code sessions is
-  compressible) is being implemented.
+- v0.1.0: step 0 (`ctxwinnow analyze`) shipped. Real-data verdict on 2026-09-26: RETHINK (median 0.0%).
 - Next: the engine, only if step 0 reports GO; then the Anthropic proxy.
 
 ## Commands

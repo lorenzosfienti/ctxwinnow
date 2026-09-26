@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-26
+
+### Added
+- `ctxwinnow analyze`: offline compression-ceiling report on Claude Code transcripts, with
+  GO / GREY / RETHINK / NO DATA verdict, per-group breakdown (`--group`), filters
+  (`--only`, `--exclude`), `--min-turns` and `-o`.
+- `compress.Policy`: compression gate by tool name and Bash command (reads, searches and
+  failures pass through), with a dependency-free Bash lexer.
+- Streaming transcript reader, lossless-floor estimate and markdown report.
+- CI: gofmt, go vet and go test on every push.
+
 ## [0.0.1] - 2026-09-26
 
 ### Added

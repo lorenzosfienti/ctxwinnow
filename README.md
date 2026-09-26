@@ -12,14 +12,23 @@ logs, JSON from CLIs and MCP tools) before it reaches the LLM. It is designed ar
 
 ## Status
 
-Design phase. Nothing is runnable yet.
+Step 0 is runnable; the engine is in design.
 
 | Step | What | State |
 |---|---|---|
-| 0 | `ctxwinnow analyze`: measure how much of real Claude Code sessions is compressible (go/no-go) | spec written |
+| 0 | `ctxwinnow analyze`: measure how much of real Claude Code sessions is compressible (go/no-go) | **v0.1.0 — shipped** |
 | 1 | Compression engine and benchmark vs. headroom | direction agreed |
 | 2 | Anthropic proxy (append-only replay, byte-faithful) | planned |
 | 3 | Retrieval tool for clients without a shared filesystem | planned |
+
+## Try step 0
+
+```bash
+go install github.com/lorenzosfienti/ctxwinnow/cmd/ctxwinnow@latest
+ctxwinnow analyze --group personal=$HOME/code --min-turns 20 -o ceiling.md
+```
+
+The report contains only aggregates (tool names, program names, numbers). Nothing leaves your machine.
 
 ## Prior art
 

@@ -1,0 +1,2 @@
+{"type":"user","cwd":"/w/a","timestamp":"2026-09-01T10:01:00Z","message":{"role":"user","content":"explore"}}
+{"type":"assistant","timestamp":"2026-09-01T10:01:01Z","message":{"id":"s1","content":[{"type":"text","text":"found it"}],"usage":{"input_tokens":5,"cache_read_input_tokens":500,"cache_creation_input_tokens":0}}}
