@@ -62,7 +62,7 @@ Lossless floor on compressible output: 2246 est. tokens (69.0% of compressible).
 
 ## Limitations
 
-- Tokens are estimated as bytes/4; shares are robust to the constant, absolute numbers are indicative.
+- Tokens are estimated as bytes/4. Category shares compare estimates with estimates and do not depend on the constant; the context-impact share divides an estimate by real token counts, so it scales with the constant (about 33% low if the true ratio is 3 bytes per token).
 - Transcripts are what Claude Code stores, not the exact requests sent to the API.
 - Only the history Claude Code keeps (30 days by default) is analysed.
 - The policy is conservative: a Bash command that reads or searches anywhere passes through entirely.
