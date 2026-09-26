@@ -1,0 +1,66 @@
+# ctxwinnow analyze — compression ceiling report
+
+ctxwinnow test · transcripts 2026-09-01 … 2026-09-02
+
+## Verdict
+
+**GO** — median share of peak context taken by compressible tool output: **10.0%** over 1 sessions with ≥ 2 turns (GO ≥ 10%, GREY 5–10%, RETHINK < 5%).
+
+## Scan
+
+| Files | Sessions | Subagent sessions | Malformed lines | Unmatched tool results |
+|---:|---:|---:|---:|---:|
+| 3 | 3 | 1 | 0 | 0 |
+
+## Context impact
+
+Share of each session's peak context occupied by compressible tool output (sessions with ≥ 2 turns).
+
+| Group | Sessions | Median | p75 | p90 | Lossless floor (median) | Verdict |
+|---|---:|---:|---:|---:|---:|---|
+| all | 1 | 10.0% | 10.0% | 10.0% | 10.0% | GO |
+| work | 1 | 10.0% | 10.0% | 10.0% | 10.0% | GO |
+| personal | 0 | 0.0% | 0.0% | 0.0% | 0.0% | NO DATA |
+| other | 0 | 0.0% | 0.0% | 0.0% | 0.0% | NO DATA |
+
+## Tool output by category
+
+All text tool results, estimated tokens.
+
+| Category | Compressible | Results | Est. tokens | Share |
+|---|---|---:|---:|---:|
+| non_text | no | 0 | 0 | 0.0% |
+| pass_tool | no | 1 | 1000 | 23.5% |
+| error | no | 0 | 0 | 0.0% |
+| bash_read | no | 0 | 0 | 0.0% |
+| bash_search | no | 0 | 0 | 0.0% |
+| unparseable | no | 0 | 0 | 0.0% |
+| persisted | no | 0 | 0 | 0.0% |
+| small | no | 0 | 0 | 0.0% |
+| json | yes | 1 | 1253 | 29.5% |
+| uncertain | no | 0 | 0 | 0.0% |
+| lines | yes | 1 | 2000 | 47.0% |
+| **total** | | 3 | 4253 | 100.0% |
+
+Lossless floor on compressible output: 2246 est. tokens (69.0% of compressible).
+
+## Top compressible sources
+
+### Bash (head program)
+
+| Name | Results | Est. tokens |
+|---|---:|---:|
+| go | 1 | 2000 |
+
+### MCP tools
+
+| Name | Results | Est. tokens |
+|---|---:|---:|
+| mcp__x__y | 1 | 1253 |
+
+## Limitations
+
+- Tokens are estimated as bytes/4; shares are robust to the constant, absolute numbers are indicative.
+- Transcripts are what Claude Code stores, not the exact requests sent to the API.
+- Only the history Claude Code keeps (30 days by default) is analysed.
+- The policy is conservative: a Bash command that reads or searches anywhere passes through entirely.
