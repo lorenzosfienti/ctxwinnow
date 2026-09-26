@@ -41,14 +41,41 @@ func Render(w io.Writer, r Result) error {
 	}
 
 	p("\n## Tool output by category\n\nAll text tool results, estimated tokens.\n\n")
-	p("| Category | Compressible | Results | Est. tokens | Share |\n|---|---|---:|---:|---:|\n")
+	if len(r.Groups) > 0 {
+		p("Group columns show each group's share of its own tool-output tokens.\n\n")
+	}
+
+	// Build header with group columns
+	header := "| Category | Compressible | Results | Est. tokens | Share |"
+	for _, g := range r.Groups {
+		header += " " + mdEscape(g.Label) + " |"
+	}
+	p("%s\n", header)
+
+	// Build separator with appropriate number of columns
+	sep := "|---|---|---:|---:|---:|"
+	for range r.Groups {
+		sep += "---:|"
+	}
+	p("%s\n", sep)
+
 	results := 0
 	for _, c := range Categories {
 		cs := o.Cats[c]
 		results += cs.Count
-		p("| %s | %s | %d | %d | %s |\n", c, yesNo(c.Compressible()), cs.Count, cs.Tokens, pct(ratio(cs.Tokens, o.TotalTokens)))
+		p("| %s | %s | %d | %d | %s |", c, yesNo(c.Compressible()), cs.Count, cs.Tokens, pct(ratio(cs.Tokens, o.TotalTokens)))
+		for _, g := range r.Groups {
+			p(" %s |", pct(ratio(g.Cats[c].Tokens, g.TotalTokens)))
+		}
+		p("\n")
 	}
-	p("| **total** | | %d | %d | %s |\n\n", results, o.TotalTokens, pct(ratio(o.TotalTokens, o.TotalTokens)))
+
+	// Total row
+	p("| **total** | | %d | %d | %s |", results, o.TotalTokens, pct(ratio(o.TotalTokens, o.TotalTokens)))
+	for _, g := range r.Groups {
+		p(" %s |", pct(ratio(g.TotalTokens, g.TotalTokens)))
+	}
+	p("\n\n")
 	p("Lossless floor on compressible output: %d est. tokens (%s of compressible).\n\n",
 		o.LosslessSaved, pct(ratio(o.LosslessSaved, o.CompressibleTokens())))
 

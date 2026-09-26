@@ -27,20 +27,22 @@ Share of each session's peak context occupied by compressible tool output (sessi
 
 All text tool results, estimated tokens.
 
-| Category | Compressible | Results | Est. tokens | Share |
-|---|---|---:|---:|---:|
-| non_text | no | 0 | 0 | 0.0% |
-| pass_tool | no | 1 | 1000 | 23.5% |
-| error | no | 0 | 0 | 0.0% |
-| bash_read | no | 0 | 0 | 0.0% |
-| bash_search | no | 0 | 0 | 0.0% |
-| unparseable | no | 0 | 0 | 0.0% |
-| persisted | no | 0 | 0 | 0.0% |
-| small | no | 0 | 0 | 0.0% |
-| json | yes | 1 | 1253 | 29.5% |
-| uncertain | no | 0 | 0 | 0.0% |
-| lines | yes | 1 | 2000 | 47.0% |
-| **total** | | 3 | 4253 | 100.0% |
+Group columns show each group's share of its own tool-output tokens.
+
+| Category | Compressible | Results | Est. tokens | Share | work | personal | other |
+|---|---|---:|---:|---:|---:|---:|---:|
+| non_text | no | 0 | 0 | 0.0% | 0.0% | 0.0% | 0.0% |
+| pass_tool | no | 1 | 1000 | 23.5% | 33.3% | 0.0% | 0.0% |
+| error | no | 0 | 0 | 0.0% | 0.0% | 0.0% | 0.0% |
+| bash_read | no | 0 | 0 | 0.0% | 0.0% | 0.0% | 0.0% |
+| bash_search | no | 0 | 0 | 0.0% | 0.0% | 0.0% | 0.0% |
+| unparseable | no | 0 | 0 | 0.0% | 0.0% | 0.0% | 0.0% |
+| persisted | no | 0 | 0 | 0.0% | 0.0% | 0.0% | 0.0% |
+| small | no | 0 | 0 | 0.0% | 0.0% | 0.0% | 0.0% |
+| json | yes | 1 | 1253 | 29.5% | 0.0% | 100.0% | 0.0% |
+| uncertain | no | 0 | 0 | 0.0% | 0.0% | 0.0% | 0.0% |
+| lines | yes | 1 | 2000 | 47.0% | 66.7% | 0.0% | 0.0% |
+| **total** | | 3 | 4253 | 100.0% | 100.0% | 100.0% | 0.0% |
 
 Lossless floor on compressible output: 2246 est. tokens (69.0% of compressible).
 
