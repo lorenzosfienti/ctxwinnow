@@ -3,6 +3,8 @@ package ceiling
 import (
 	"reflect"
 	"testing"
+
+	"github.com/lorenzosfienti/ctxwinnow/internal/transcript"
 )
 
 func TestAnalyzer(t *testing.T) {
@@ -72,6 +74,29 @@ func TestPercentile(t *testing.T) {
 	}
 	if !reflect.DeepEqual(xs, []float64{0.3, 0.1, 0.2}) {
 		t.Fatal("Percentile must not reorder its input")
+	}
+}
+
+// TestCompactionResetsRunningTotals guards internal/ceiling/analyze.go:132-133: only compressible
+// output produced after the last compact_boundary must count towards share_c at the peak. An
+// inline session (not fixtureSessions, which the golden report depends on) puts 2000 compressible
+// tokens before a compact_boundary and 1000 after it, with the peak context arriving last. If the
+// reset (`runC, runL = 0, 0`) were removed, the pre-compaction tokens would still be counted and
+// share_c would come out as 3000/20000 instead of 1000/20000.
+func TestCompactionResetsRunningTotals(t *testing.T) {
+	s := &transcript.Session{CWD: "/x", Events: []transcript.Event{
+		tr("Bash", goTest, repeatLine("ok line", 1000)), // 8000 bytes -> 2000 tokens, before compaction
+		usage("u1", 10000),
+		{Kind: transcript.EvCompact},
+		tr("Bash", goTest, repeatLine("abc", 1000)), // 4000 bytes -> 1000 tokens, after compaction
+		usage("u2", 20000),                          // peak
+	}}
+	a := NewAnalyzer(Options{MinTurns: 1})
+	a.AddSession(s, false)
+	got := a.Result().Overall.SharesC
+	want := []float64{1000.0 / 20000}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("SharesC = %v, want %v (compaction must reset the running compressible total)", got, want)
 	}
 }
 
