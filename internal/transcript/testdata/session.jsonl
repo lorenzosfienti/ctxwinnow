@@ -1,0 +1,10 @@
+{"type":"user","cwd":"/home/u/proj","timestamp":"2026-09-01T10:00:00Z","message":{"role":"user","content":"run the tests"}}
+{"type":"assistant","timestamp":"2026-09-01T10:00:01Z","message":{"id":"m1","content":[{"type":"text","text":"ok"}],"usage":{"input_tokens":1,"cache_read_input_tokens":100,"cache_creation_input_tokens":5}}}
+{"type":"assistant","timestamp":"2026-09-01T10:00:02Z","message":{"id":"m1","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"go test ./..."}}],"usage":{"input_tokens":10,"cache_read_input_tokens":100,"cache_creation_input_tokens":5}}}
+{"type":"user","timestamp":"2026-09-01T10:00:03Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"ok  \tpkg\t0.1s","is_error":false}]}}
+{"type":"assistant","timestamp":"2026-09-01T10:00:04Z","message":{"id":"m2","content":[{"type":"tool_use","id":"t2","name":"mcp__gh__list","input":{}},{"type":"tool_use","id":"t3","name":"Read","input":{"file_path":"/a"}}],"usage":{"input_tokens":20,"cache_read_input_tokens":200,"cache_creation_input_tokens":0}}}
+{"type":"user","timestamp":"2026-09-01T10:00:05Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t2","content":[{"type":"text","text":"a"},{"type":"text","text":"b"}]},{"type":"tool_result","tool_use_id":"t3","content":[{"type":"image","source":{"type":"base64","data":"AA=="}}],"is_error":true},{"type":"tool_result","tool_use_id":"tX","content":null}]}}
+{"type":"system","subtype":"compact_boundary","timestamp":"2026-09-01T11:00:00Z"}
+{"type":"user", broken
+
+{"type":"system","subtype":"turn_duration","timestamp":"2026-09-01T10:30:00Z"}
