@@ -1,0 +1,3 @@
+module github.com/lorenzosfienti/ctxwinnow
+
+go 1.27.1
