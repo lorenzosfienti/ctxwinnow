@@ -1,0 +1,5 @@
+reports/
+/ctxwinnow
+*.test
+*.out
+docs/superpowers/
