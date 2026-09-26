@@ -56,6 +56,14 @@ func analyze(args []string, stdout, stderr io.Writer) int {
 	minTurns := flags.Int("min-turns", 20, "minimum assistant messages for a session to count in the median")
 	out := flags.String("o", "", "write the report to FILE instead of stdout")
 	if err := flags.Parse(args); err != nil {
+		if err == flag.ErrHelp {
+			return 0
+		}
+		return 2
+	}
+	if flags.NArg() > 0 {
+		fmt.Fprintf(stderr, "unexpected argument %q\n", flags.Arg(0))
+		fmt.Fprint(stderr, usage)
 		return 2
 	}
 	opt := ceiling.Options{Only: only, Exclude: exclude, MinTurns: *minTurns}
@@ -119,7 +127,11 @@ func scan(root string, opt ceiling.Options) (ceiling.Result, error) {
 		if err != nil {
 			return fmt.Errorf("%s: %w", p, err)
 		}
-		a.AddSession(s, strings.Contains(filepath.ToSlash(p), "/subagents/"))
+		rel, relErr := filepath.Rel(root, p)
+		if relErr != nil {
+			rel = p
+		}
+		a.AddSession(s, strings.Contains("/"+filepath.ToSlash(rel), "/subagents/"))
 		return nil
 	})
 	res := a.Result()

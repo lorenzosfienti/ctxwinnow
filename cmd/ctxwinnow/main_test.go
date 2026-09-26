@@ -66,3 +66,53 @@ func TestUsageErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestStrayPositionalArgument(t *testing.T) {
+	code, _, errOut := runArgs("analyze", "--root", "testdata/projects", "extra")
+	if code != 2 {
+		t.Fatalf("code=%d, want 2", code)
+	}
+	if !strings.Contains(errOut, `unexpected argument "extra"`) || !strings.Contains(errOut, "usage:") {
+		t.Errorf("stderr = %q, want the unexpected-argument message and usage", errOut)
+	}
+}
+
+func TestAnalyzeHelp(t *testing.T) {
+	if code, _, _ := runArgs("analyze", "-h"); code != 0 {
+		t.Errorf("analyze -h code=%d, want 0", code)
+	}
+	if code, _, _ := runArgs("analyze", "--help"); code != 0 {
+		t.Errorf("analyze --help code=%d, want 0", code)
+	}
+}
+
+// TestSubagentDetectionIsRootRelative guards against matching "/subagents/" in the absolute
+// path: it puts the scanned root itself under a directory named "subagents", with no such
+// directory below root, and expects zero subagent sessions.
+func TestSubagentDetectionIsRootRelative(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "subagents", "root")
+	copyFixture(t, "testdata/projects/proj/a.jsonl", filepath.Join(root, "proj", "a.jsonl"))
+	copyFixture(t, "testdata/projects/proj/subagents/b.jsonl", filepath.Join(root, "proj", "x", "b.jsonl"))
+
+	code, out, errOut := runArgs("analyze", "--root", root)
+	if code != 0 {
+		t.Fatalf("code=%d stderr=%s", code, errOut)
+	}
+	if !strings.Contains(out, "| 2 | 2 | 0 | 0 | 0 |") {
+		t.Errorf("expected the scan row to show 0 subagent sessions:\n%s", out)
+	}
+}
+
+func copyFixture(t *testing.T, from, to string) {
+	t.Helper()
+	data, err := os.ReadFile(from)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(to), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(to, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
