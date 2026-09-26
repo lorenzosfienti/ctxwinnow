@@ -12,12 +12,12 @@ logs, JSON from CLIs and MCP tools) before it reaches the LLM. It is designed ar
 
 ## Status
 
-Step 0 is runnable; the engine is in design.
+Step 0 is runnable. On the author's sessions it reported RETHINK: the engine is on hold pending a re-scope.
 
 | Step | What | State |
 |---|---|---|
 | 0 | `ctxwinnow analyze`: measure how much of real Claude Code sessions is compressible (go/no-go) | **v0.1.0 — shipped** |
-| 1 | Compression engine and benchmark vs. headroom | direction agreed |
+| 1 | Compression engine and benchmark vs. headroom | on hold (step 0: RETHINK) |
 | 2 | Anthropic proxy (append-only replay, byte-faithful) | planned |
 | 3 | Retrieval tool for clients without a shared filesystem | planned |
 

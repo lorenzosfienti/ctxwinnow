@@ -17,6 +17,15 @@ All notable changes to this project are documented here. The format follows
 - Streaming transcript reader, lossless-floor estimate and markdown report.
 - CI: gofmt, go vet and go test on every push.
 
+### Fixed
+- `compress.Policy` now also detects read and search verbs inside compound Bash commands
+  (`for`/`while`/`if`/subshells/brace groups), not only at the top level of the command.
+- `ctxwinnow analyze` now rejects a stray positional argument with exit code 2 instead of
+  silently ignoring flags that follow it; `-h`/`--help` now exits 0.
+- Subagent-session detection now matches the transcript path relative to `--root`, instead of
+  the absolute filesystem path, which could misclassify sessions under a root that itself sits
+  inside a directory named `subagents`.
+
 ## [0.0.1] - 2026-09-26
 
 ### Added
