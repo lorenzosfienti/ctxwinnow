@@ -107,7 +107,7 @@ func TestRenderGolden(t *testing.T) {
 	if sum.Counts.Main != 5 || sum.Counts.Decomposed != 3 || sum.Counts.Sub != 1 {
 		t.Fatalf("golden input drifted: %+v", sum.Counts)
 	}
-	goldenFile(t, "report.golden", render(t, &Report{Version: "test", Summary: sum}))
+	goldenFile(t, "report.golden", render(t, &Report{Version: "test", Summary: sum, Levers: Evaluate(sum)}))
 }
 
 func TestRenderEmptyGolden(t *testing.T) {
@@ -123,7 +123,7 @@ func TestRenderUndecomposedGolden(t *testing.T) {
 		tsess{Rel: "-home-zzuser-zzold/zz-a.jsonl", CWD: "/home/zzuser/zzold", Version: "2.1.250", Contexts: []int{4000, 4100, 4200}},
 		tsess{Rel: "-home-zzuser-zzold/zz-b.jsonl", CWD: "/home/zzuser/zzold", Start: "2026-09-02T10:00:00Z", Contexts: []int{4200, 4300, 4400}},
 	), Options{MinTurns: 3})
-	out := render(t, &Report{Version: "test", Summary: sum})
+	out := render(t, &Report{Version: "test", Summary: sum, Levers: Evaluate(sum)})
 	banner := "> component breakdown needs Claude Code ≥ 2.1.259 — 2 sessions are older or lack a tool snapshot\n"
 	if !strings.Contains(out, banner) {
 		t.Errorf("banner missing:\n%s", out)
@@ -134,10 +134,12 @@ func TestRenderUndecomposedGolden(t *testing.T) {
 // TestRenderSections checks the section order the later tasks anchor on and that the banner only
 // appears when nothing could be decomposed.
 func TestRenderSections(t *testing.T) {
-	out := render(t, &Report{Version: "test", Summary: goldenSummary(t)})
+	sum := goldenSummary(t)
+	out := render(t, &Report{Version: "test", Summary: sum, Levers: Evaluate(sum)})
 	last := -1
 	for _, h := range []string{"# ctxwinnow overhead — fixed per-call context report\n", "\n## Baseline\n",
-		"\n## What the baseline is made of\n", "\n## Paid for but unused\n", "\n## Instruction files\n", "\n## Limitations\n"} {
+		"\n## What the baseline is made of\n", "\n## Paid for but unused\n", "\n## Instruction files\n",
+		"\n## Suggested levers\n", "\n## Limitations\n"} {
 		i := strings.Index(out, h)
 		if i <= last {
 			t.Errorf("heading %q at %d, want after %d", strings.TrimSpace(h), i, last)
@@ -167,11 +169,14 @@ func TestRenderP90(t *testing.T) {
 
 // TestRenderRedacted: with --redact the golden report keeps built-in names and labels everything else.
 func TestRenderRedacted(t *testing.T) {
-	out := render(t, &Report{Version: "test", Redact: true, Summary: goldenSummary(t)})
-	if strings.Contains(out, "zz") || strings.Contains(out, "/home/") {
+	sum := goldenSummary(t)
+	out := render(t, &Report{Version: "test", Redact: true, Summary: sum, Levers: Evaluate(sum)})
+	if strings.Contains(out, "zz") || strings.Contains(out, "/home/") || strings.Contains(out, "~/.claude") {
 		t.Errorf("redacted report leaks a synthetic name or path:\n%s", out)
 	}
-	for _, want := range []string{"| Artifact |", "| file-1 (Project) | Project |", "MCP tools of mcp-", "servers carried: mcp-"} {
+	for _, want := range []string{"| Artifact |", "| file-1 (Project) | Project |", "MCP tools of mcp-", "servers carried: mcp-",
+		"### 1. instructions: file-1 (Project)\n", "- Local (`<path>`, gitignored): `\"claudeMdExcludes\": [\"<path of file-1>\"]`\n",
+		"- User (`<path>`): `\"enableArtifact\": false`"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("redacted report lacks %q:\n%s", want, out)
 		}
@@ -257,5 +262,174 @@ func TestFormatHelpers(t *testing.T) {
 	}
 	if got := mdEscape("a|b\nc"); got != `a\|b c` {
 		t.Errorf("mdEscape = %q", got)
+	}
+}
+
+// section returns the text of the "## heading" section, up to the next "## " heading.
+func section(t *testing.T, out, heading string) string {
+	t.Helper()
+	_, rest, ok := strings.Cut(out, "\n## "+heading+"\n")
+	if !ok {
+		t.Fatalf("no section %q in:\n%s", heading, out)
+	}
+	body, _, _ := strings.Cut(rest, "\n## ")
+	return body
+}
+
+// TestRenderLevers checks the levers section on the golden input: printable levers only, ranked by
+// user-scope saving, both scopes (the project scope names how many projects need the Local snippet,
+// for tools and for the Local-only instruction lever), usage stated plainly, presence with its caveat,
+// off-wins notes, never a shared Project scope, never a total and never "looks applied".
+func TestRenderLevers(t *testing.T) {
+	sum := goldenSummary(t)
+	out := render(t, &Report{Version: "test", Summary: sum, Levers: Evaluate(sum)})
+	lv := section(t, out, "Suggested levers")
+	last := -1
+	for _, h := range []string{"### 1. instructions: /home/zzuser/work/CLAUDE.md (Project)\n", "### 2. disable-artifact: tool Artifact\n",
+		"### 3. disable-workflows: tool Workflow\n", "### 4. mcp: MCP (deferred tool names, instructions, surfaced schemas)\n"} {
+		i := strings.Index(lv, h)
+		if i <= last {
+			t.Errorf("lever heading %q at %d, want after %d:\n%s", strings.TrimSpace(h), i, last, lv)
+		}
+		last = i
+	}
+	for _, bad := range []string{"disable-sendfeedback", "skill-visibility", "### 5.", "looks applied", "Project (`"} {
+		if strings.Contains(lv, bad) {
+			t.Errorf("levers section contains %q:\n%s", bad, lv)
+		}
+	}
+	if strings.Contains(strings.ToLower(lv), "total") {
+		t.Errorf("levers section prints a total:\n%s", lv)
+	}
+	for _, want := range []string{
+		"- **Action:** exclude: a Project file above the project directory of every session that loaded it; exclude it there with the Local snippet.\n",
+		"- Local (`.claude/settings.local.json`, gitignored): `\"claudeMdExcludes\": [\"/home/zzuser/work/CLAUDE.md\"]`\n",
+		"- **Saving, user scope** (every decomposed session carrying it): ≈788 tokens per call over 3 sessions (15 calls) · 11.7% of main token-turns.\n",
+		"- **Saving, project scope** (Local snippet, one per project; 2 projects never called it): ≈788 tokens per call over 3 sessions (15 calls) · 11.7% of main token-turns.\n",
+		"- **Saving, project scope** (Local snippet, one per project; 1 project loaded it): ≈3.1k tokens per call over 1 session (6 calls) · 18.6% of main token-turns.\n",
+		"- **Usage:** called in 0 of 5 sessions, 0 projects, last used —.\n",
+		"- **Observed presence:** Artifact last sent on 2026-09-22 (Claude Code 2.1.283); absent from the 1 most recent session with a tool snapshot (1 project). Presence reflects past launches, not current settings.\n",
+		"- User (`~/.claude/settings.json`): `\"enableArtifact\": false` — no other settings file can re-enable it; delete this line to undo.\n",
+		"- Local (`.claude/settings.local.json`, gitignored): `\"enableArtifact\": false` — no other settings file can re-enable it; delete this line to undo.\n",
+		"- Env: `CLAUDE_CODE_DISABLE_ARTIFACT=1 claude`\n",
+		"- Flag: `claude --disallowedTools Artifact`\n",
+		"- **Usage:** called in 1 of 5 sessions, 1 project, last used 2026-09-22. You do use this tool: disabling it takes it away from those sessions too.\n",
+		"- **Saving, project scope** (Local snippet, projects that never called it): none — every project carrying it also called it.\n",
+		"- **Snippets:** none (informational).\n",
+		"- **Docs:** https://code.claude.com/docs/en/settings-reference\n",
+	} {
+		if !strings.Contains(lv, want) {
+			t.Errorf("levers section lacks %q:\n%s", want, lv)
+		}
+	}
+	if n := strings.Count(lv, "no other settings file can re-enable it; delete this line to undo"); n != 2 {
+		t.Errorf("off-wins note printed %d times, want 2 (User and Local enableArtifact)", n)
+	}
+}
+
+// TestRenderLeversNone prints the minimum-benefit note when no lever is printable, and the
+// decomposed-sessions note when nothing could be decomposed.
+func TestRenderLeversNone(t *testing.T) {
+	sum := Summarize(built(lsess("p/a.jsonl", "/w/a", "2026-09-01T10:00:00Z", 3, []string{"Bash", "Read"})), Options{MinTurns: 1})
+	lv := section(t, render(t, &Report{Version: "test", Summary: sum, Levers: Evaluate(sum)}), "Suggested levers")
+	if !strings.Contains(lv, "_None reaches the 0.5% minimum benefit") || strings.Contains(lv, "### ") {
+		t.Errorf("want the minimum-benefit note and no lever:\n%s", lv)
+	}
+	sum = Summarize(built(tsess{Rel: "p/old.jsonl", Version: "2.1.250", Contexts: flat(3, 4000)}), Options{MinTurns: 1})
+	lv = section(t, render(t, &Report{Version: "test", Summary: sum, Levers: Evaluate(sum)}), "Suggested levers")
+	if !strings.Contains(lv, "_Needs decomposed sessions._") {
+		t.Errorf("want the decomposed-sessions note:\n%s", lv)
+	}
+}
+
+// TestRenderLeverActions covers the instruction actions without a snippet (trim), the prune
+// action and the skill-visibility snippet.
+func TestRenderLeverActions(t *testing.T) {
+	x := lsess("p/a.jsonl", "/w/a", "2026-09-01T10:00:00Z", 3, []string{"Bash"})
+	x.Pre = []transcript.Attachment{instr("/home/u/.claude/CLAUDE.md", "User", 30000),
+		instr("/home/u/.claude/projects/-w-a/memory/MEMORY.md", "AutoMem", 30000),
+		listing(transcript.SkillLine{Bytes: 30}, transcript.SkillLine{Name: "zzbig", Bytes: 9000})}
+	x.Contexts = flat(3, 30000)
+	sum := Summarize(built(x), Options{MinTurns: 1})
+	lv := section(t, render(t, &Report{Version: "test", Summary: sum, Levers: Evaluate(sum)}), "Suggested levers")
+	for _, want := range []string{
+		"- **Action:** trim: a User file or a Project file inside the session's project; no settings lever, shorten it by hand.\n",
+		"- **Action:** prune: an auto-memory file; prune it by hand, or turn auto memory off locally (heavier).\n",
+		"- Local (`.claude/settings.local.json`, gitignored): `\"autoMemoryEnabled\": false`\n",
+		"- User (`~/.claude/settings.json`): `\"skillOverrides\": {\"zzbig\": \"user-invocable-only\"}`\n",
+		"- **Snippets:** none (trim the file by hand).\n",
+	} {
+		if !strings.Contains(lv, want) {
+			t.Errorf("levers section lacks %q:\n%s", want, lv)
+		}
+	}
+}
+
+func TestExpandSnippet(t *testing.T) {
+	skills := LeverResult{Skills: []string{"zzb", "code-review", "zzp:x"}}
+	sn := Snippet{Scope: ScopeUser, Text: `"skillOverrides": {{skills}}`}
+	if got, want := expandSnippet(sn, skills, NewRedactor(false)), `"skillOverrides": {"zzb": "user-invocable-only", "code-review": "user-invocable-only", "zzp:x": "user-invocable-only"}`; got != want {
+		t.Errorf("skills = %s, want %s", got, want)
+	}
+	if got, want := expandSnippet(sn, skills, NewRedactor(true)), `"skillOverrides": {"skill-1": "user-invocable-only", "code-review": "user-invocable-only", "skill-2 (plugin)": "user-invocable-only"}`; got != want {
+		t.Errorf("redacted skills = %s, want %s", got, want)
+	}
+	path := Snippet{Scope: ScopeLocal, Text: `"claudeMdExcludes": [{{path}}]`}
+	for subject, want := range map[string]string{
+		"/home/u/work/CLAUDE.md":    `"claudeMdExcludes": ["/home/u/work/CLAUDE.md"]`,
+		`C:\Users\u\work\CLAUDE.md`: `"claudeMdExcludes": ["C:\\Users\\u\\work\\CLAUDE.md"]`,
+		"/w/<a&b>/CLAUDE.md":        `"claudeMdExcludes": ["/w/<a&b>/CLAUDE.md"]`,
+	} {
+		if got := expandSnippet(path, LeverResult{Subject: subject}, NewRedactor(false)); got != want {
+			t.Errorf("path %q = %s, want %s", subject, got, want)
+		}
+	}
+	red := NewRedactor(true)
+	red.Name(ClassFileProject, "/home/u/work/CLAUDE.md")
+	if got, want := expandSnippet(path, LeverResult{Subject: "/home/u/work/CLAUDE.md"}, red), `"claudeMdExcludes": ["<path of file-1>"]`; got != want {
+		t.Errorf("redacted path = %s, want %s", got, want)
+	}
+	if got := expandSnippet(Snippet{Text: `"enableArtifact": false`}, LeverResult{}, red); got != `"enableArtifact": false` {
+		t.Errorf("literal snippet changed: %s", got)
+	}
+}
+
+func TestScopeLabel(t *testing.T) {
+	off, on := NewRedactor(false), NewRedactor(true)
+	for _, c := range []struct {
+		s       Scope
+		off, on string
+	}{
+		{ScopeUser, "User (`~/.claude/settings.json`)", "User (`<path>`)"},
+		{ScopeLocal, "Local (`.claude/settings.local.json`, gitignored)", "Local (`<path>`, gitignored)"},
+		{ScopeEnv, "Env", "Env"},
+		{ScopeFlag, "Flag", "Flag"},
+	} {
+		if got := scopeLabel(c.s, off); got != c.off {
+			t.Errorf("scopeLabel(%s) = %q, want %q", c.s, got, c.off)
+		}
+		if got := scopeLabel(c.s, on); got != c.on {
+			t.Errorf("redacted scopeLabel(%s) = %q, want %q", c.s, got, c.on)
+		}
+	}
+}
+
+// TestUnusedLeverColumn: the unused table names the catalogued lever of each tool, "mcp" for MCP
+// rows and "no known safe lever" for everything else (Read, Edit, ToolSearch included).
+func TestUnusedLeverColumn(t *testing.T) {
+	sum := goldenSummary(t)
+	un := section(t, render(t, &Report{Version: "test", Summary: sum, Levers: Evaluate(sum)}), "Paid for but unused")
+	for _, want := range []string{
+		"| Tool | Carried in | Called in | Projects calling | Last call | Median ≈tokens | Unused token-turns | Share of main input | Lever |\n|---|---:|---:|---:|---|---:|---:|---:|---|\n",
+		"| Artifact | 3 | 0 | 0 | — | ≈1.0k | ≈11.8k | 11.7% | disable-artifact |\n",
+		"| SendFeedback | 1 | 0 | 0 | — | ≈80 | ≈400 | 0.4% | disable-sendfeedback |\n",
+		"| Workflow | 1 | 1 | 1 | 2026-09-22 | ≈200 | ≈0 | 0.0% | disable-workflows |\n",
+		"| Read | 3 | 2 | 1 | 2026-09-21 | ≈200 | ≈1.2k | 1.2% | no known safe lever |\n",
+		"| ToolSearch | 1 | 0 | 0 | — | ≈33 | ≈133 | 0.1% | no known safe lever |\n",
+		"| MCP tools of zzsrv (loaded upfront) † | 1 | 0 | 0 | — | ≈32 | ≈129 | 0.1% | mcp |\n",
+	} {
+		if !strings.Contains(un, want) {
+			t.Errorf("unused section lacks %q:\n%s", want, un)
+		}
 	}
 }

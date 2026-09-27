@@ -1,6 +1,7 @@
 package overhead
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -9,17 +10,19 @@ import (
 	"time"
 )
 
-// Report is everything Render prints. T8 adds `Levers []LeverResult`; T9 adds `Compare *Comparison`.
+// Report is everything Render prints. T9 adds `Compare *Comparison`.
 type Report struct {
 	Version string // internal/version.Version (tests use "test")
 	Redact  bool   // --redact
 	Summary *Summary
+	Levers  []LeverResult // Evaluate(Summary); only Printable results are rendered
 }
 
 // Render writes the markdown report. It builds one Redactor(r.Redact), labels the instruction files
 // in table order (so file-N follows the Instruction files table whatever section prints first), then
 // calls renderHeader and, when there is at least one eligible main session, renderBaseline,
-// renderComponents, renderUnused and renderInstructions; renderLimitations always closes the report.
+// renderComponents, renderUnused, renderInstructions and renderLevers; renderLimitations always
+// closes the report.
 // Only names, sizes, counts, dates, instruction-file paths and project prefixes are printed.
 func Render(w io.Writer, r *Report) error {
 	var b strings.Builder
@@ -34,6 +37,7 @@ func Render(w io.Writer, r *Report) error {
 		renderComponents(&b, s, red)
 		renderUnused(&b, s, red)
 		renderInstructions(&b, s, red)
+		renderLevers(&b, r, red)
 	}
 	renderLimitations(&b, s)
 	_, err := io.WriteString(w, b.String())
@@ -162,7 +166,8 @@ func renderComponents(b *strings.Builder, s *Summary, red *Redactor) {
 	p("\n")
 }
 
-// renderUnused writes "## Paid for but unused": the tools table, the skill listing row and the MCP row.
+// renderUnused writes "## Paid for but unused": the tools table (with the catalogued lever of each
+// tool), the skill listing row and the MCP row.
 func renderUnused(b *strings.Builder, s *Summary, red *Redactor) {
 	p := printer(b)
 	p("## Paid for but unused\n\n")
@@ -175,18 +180,22 @@ func renderUnused(b *strings.Builder, s *Summary, red *Redactor) {
 	if len(s.Unused) == 0 {
 		p("_No tool definition in the decomposed sessions._\n\n")
 	} else {
-		p("| Tool | Carried in | Called in | Projects calling | Last call | Median ≈tokens | Unused token-turns | Share of main input |\n")
-		p("|---|---:|---:|---:|---|---:|---:|---:|\n")
+		p("| Tool | Carried in | Called in | Projects calling | Last call | Median ≈tokens | Unused token-turns | Share of main input | Lever |\n")
+		p("|---|---:|---:|---:|---|---:|---:|---:|---|\n")
 		mcp := false
 		for _, row := range s.Unused {
 			var name string
+			lever := "no known safe lever"
+			if lv, ok := LeverFor("tool:" + row.Name); ok {
+				lever = lv.ID
+			}
 			if row.MCP {
-				name, mcp = componentName(CompMCPTool, row.Name, red)+" †", true
+				name, lever, mcp = componentName(CompMCPTool, row.Name, red)+" †", "mcp", true
 			} else {
 				name = red.Name(ClassTool, row.Name)
 			}
-			p("| %s | %s | %s | %s | %s | %s | %s | %s |\n", mdEscape(name), fmtInt(row.Carrying), fmtInt(row.Calling),
-				fmtInt(row.Projects), fmtDay(row.LastCall), fmtTok(row.MedianTokens), fmtTok(row.TokenTurns), fmtPct(row.Share))
+			p("| %s | %s | %s | %s | %s | %s | %s | %s | %s |\n", mdEscape(name), fmtInt(row.Carrying), fmtInt(row.Calling),
+				fmtInt(row.Projects), fmtDay(row.LastCall), fmtTok(row.MedianTokens), fmtTok(row.TokenTurns), fmtPct(row.Share), lever)
 		}
 		p("\n")
 		if mcp {
@@ -241,6 +250,208 @@ func renderInstructions(b *strings.Builder, s *Summary, red *Redactor) {
 			fmtInt(in.Sessions), fmtTok(in.MedianTokens))
 	}
 	p("\n")
+}
+
+// renderLevers writes "## Suggested levers": every Printable result of r.Levers in Evaluate order
+// (ranked by user-scope saving) with its status, action, user- and project-scope savings, usage,
+// observed presence, snippets, trade-off and doc URL. Savings are never added up: levers overlap.
+func renderLevers(b *strings.Builder, r *Report, red *Redactor) {
+	p := printer(b)
+	s := r.Summary
+	p("## Suggested levers\n\n")
+	if len(s.Decomposed) == 0 {
+		p("_Needs decomposed sessions._\n\n")
+		return
+	}
+	p("Catalogued levers whose user-scope saving reaches %s of main token-turns (`MinBenefit`), ranked by that saving. Savings are ≈tokens from your own sessions; levers overlap, so they are never added up. Snippets use User, Local, Env or Flag scope only — never a committed project settings file, which would change the setting for every collaborator.\n\n",
+		fmtPct(MinBenefit))
+	n := 0
+	for _, lr := range r.Levers {
+		if !lr.Printable {
+			continue
+		}
+		n++
+		tool := strings.HasPrefix(lr.Target, "tool:")
+		p("### %d. %s: %s\n\n", n, lr.ID, mdEscape(leverTitle(lr, red)))
+		p("- **Status:** %s\n", lr.Status)
+		if act, ok := leverActions[lr.Action]; ok {
+			p("- **Action:** %s: %s\n", lr.Action, act)
+		}
+		if len(lr.Skills) > 0 {
+			p("- **Skills:** %s never-used skills, largest listing lines first (at most %d; plugin skills are left out).\n",
+				fmtInt(len(lr.Skills)), MaxSkillOverrides)
+		}
+		p("- **Saving, user scope** (%s): %s\n", userScopeText(lr), savingText(lr.User))
+		if lr.HasProject && hasScope(lr.Snippets, ScopeLocal) {
+			if lr.Project.Sessions == 0 {
+				p("- **Saving, project scope** (Local snippet, projects that never called it): none — every project carrying it also called it.\n")
+			} else {
+				p("- **Saving, project scope** (Local snippet, one per project; %s): %s\n", projectScopeText(lr), savingText(lr.Project))
+			}
+		}
+		if tool {
+			u := lr.Usage
+			p("- **Usage:** called in %s of %s, %s, last used %s.", fmtInt(u.Called), plural(s.Counts.Main, "session"),
+				plural(u.Projects, "project"), fmtDay(u.Last))
+			if u.Called > 0 {
+				p(" You do use this tool: disabling it takes it away from those sessions too.")
+			}
+			p("\n")
+		}
+		if tool && lr.Presence != nil {
+			p("- **Observed presence:** %s Presence reflects past launches, not current settings.\n",
+				presenceText(red.Name(ClassTool, lr.Subject), lr.Presence))
+		}
+		if len(lr.Snippets) == 0 {
+			if lr.Action == "trim" {
+				p("- **Snippets:** none (trim the file by hand).\n")
+			} else {
+				p("- **Snippets:** none (informational).\n")
+			}
+		} else {
+			p("- **Snippets:**\n")
+			for _, sn := range lr.Snippets {
+				p("  - %s: `%s`", scopeLabel(sn.Scope, red), expandSnippet(sn, lr, red))
+				if sn.OffWins {
+					p(" — no other settings file can re-enable it; delete this line to undo.")
+				}
+				p("\n")
+			}
+		}
+		p("- **Trade-off:** %s\n", lr.Tradeoff)
+		p("- **Docs:** %s\n\n", lr.DocURL)
+	}
+	if n == 0 {
+		p("_None reaches the %s minimum benefit; smaller items stay in the tables above._\n\n", fmtPct(MinBenefit))
+	}
+}
+
+// leverActions explains each instruction action.
+var leverActions = map[string]string{
+	"trim":    "a User file or a Project file inside the session's project; no settings lever, shorten it by hand.",
+	"exclude": "a Project file above the project directory of every session that loaded it; exclude it there with the Local snippet.",
+	"prune":   "an auto-memory file; prune it by hand, or turn auto memory off locally (heavier).",
+}
+
+// leverTitle names the subject of a lever result (tools and files through red).
+func leverTitle(lr LeverResult, red *Redactor) string {
+	switch {
+	case strings.HasPrefix(lr.Target, "tool:"):
+		return componentName(CompTool, lr.Subject, red)
+	case lr.Target == "instructions":
+		if red.On() {
+			return red.Name(FileClass(lr.FileLabel), lr.Subject)
+		}
+		return lr.Subject + " (" + lr.FileLabel + ")"
+	case lr.Target == "skill-listing":
+		return componentName(CompSkillListing, "", red)
+	case lr.Target == "mcp":
+		return componentName(CompMCP, "", red)
+	}
+	return lr.Target
+}
+
+// userScopeText says which sessions the user-scope saving counts.
+func userScopeText(lr LeverResult) string {
+	switch lr.Target {
+	case "instructions":
+		return "every decomposed session loading it"
+	case "skill-listing":
+		return "every decomposed session listing these skills"
+	}
+	return "every decomposed session carrying it"
+}
+
+// projectScopeText says how many projects need their own Local snippet to reach the project-scope
+// saving: "2 projects never called it" (tools) or "1 project loaded it" (instruction files).
+func projectScopeText(lr LeverResult) string {
+	if lr.Target == "instructions" {
+		return plural(lr.Project.Projects, "project") + " loaded it"
+	}
+	return plural(lr.Project.Projects, "project") + " never called it"
+}
+
+// savingText: "≈1.0k tokens per call over 3 sessions (13 calls) · 11.7% of main token-turns."
+func savingText(sv Saving) string {
+	return fmt.Sprintf("%s tokens per call over %s (%s) · %s of main token-turns.", fmtTok(sv.PerCall),
+		plural(sv.Sessions, "session"), plural(sv.Calls, "call"), fmtPct(sv.Share))
+}
+
+// presenceText is the observed-presence sentence of a tool; it never claims a setting is applied.
+func presenceText(tool string, pr *Presence) string {
+	if pr.LastSent.IsZero() {
+		return tool + " was not sent in any eligible main session with a tool snapshot."
+	}
+	version := pr.LastVersion
+	if version == "" {
+		version = "unknown version"
+	}
+	sent := fmt.Sprintf("%s last sent on %s (Claude Code %s)", tool, fmtDay(pr.LastSent), mdEscape(version))
+	if pr.AbsentRecent == 0 {
+		return sent + ", in the most recent session with a tool snapshot."
+	}
+	word := "sessions"
+	if pr.AbsentRecent == 1 {
+		word = "session"
+	}
+	return fmt.Sprintf("%s; absent from the %s most recent %s with a tool snapshot (%s).", sent, fmtInt(pr.AbsentRecent), word,
+		plural(pr.AbsentProjects, "project"))
+}
+
+func hasScope(sns []Snippet, sc Scope) bool {
+	for _, sn := range sns {
+		if sn.Scope == sc {
+			return true
+		}
+	}
+	return false
+}
+
+// expandSnippet fills {{skills}} (a JSON object of skill → "user-invocable-only", names through
+// red as ClassSkill) and {{path}} (a JSON string of red.Name(ClassPath, lr.Subject)).
+func expandSnippet(sn Snippet, lr LeverResult, red *Redactor) string {
+	text := sn.Text
+	if strings.Contains(text, "{{skills}}") {
+		parts := make([]string, len(lr.Skills))
+		for i, name := range lr.Skills {
+			parts[i] = jsonString(red.Name(ClassSkill, name)) + `: "user-invocable-only"`
+		}
+		text = strings.ReplaceAll(text, "{{skills}}", "{"+strings.Join(parts, ", ")+"}")
+	}
+	if strings.Contains(text, "{{path}}") {
+		text = strings.ReplaceAll(text, "{{path}}", jsonString(red.Name(ClassPath, lr.Subject)))
+	}
+	return text
+}
+
+// jsonString is s as a JSON string literal without HTML escaping, so "<path>" stays readable and a
+// Windows path keeps valid escaped backslashes.
+func jsonString(s string) string {
+	var b strings.Builder
+	enc := json.NewEncoder(&b)
+	enc.SetEscapeHTML(false)
+	_ = enc.Encode(s) // encoding a string cannot fail
+	return strings.TrimSuffix(b.String(), "\n")
+}
+
+// scopeLabel: "User (`~/.claude/settings.json`)", "Local (`.claude/settings.local.json`, gitignored)",
+// "Env", "Flag"; the settings paths go through red.Name(ClassPath, …).
+func scopeLabel(sc Scope, red *Redactor) string {
+	switch sc {
+	case ScopeUser:
+		return "User (`" + red.Name(ClassPath, "~/.claude/settings.json") + "`)"
+	case ScopeLocal:
+		return "Local (`" + red.Name(ClassPath, ".claude/settings.local.json") + "`, gitignored)"
+	}
+	return string(sc)
+}
+
+// plural: plural(1, "session") = "1 session"; plural(3, "session") = "3 sessions".
+func plural(n int, word string) string {
+	if n == 1 {
+		return "1 " + word
+	}
+	return fmtInt(n) + " " + word + "s"
 }
 
 // renderLimitations writes "## Limitations".

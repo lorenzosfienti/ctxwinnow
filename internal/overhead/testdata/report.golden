@@ -54,18 +54,18 @@ Artifact is carried in 1 of 1 subagent tool snapshots; main-session levers also 
 
 Unused cost of a tool = Σ over decomposed main sessions that carry it and never call it of its ≈tokens × N, as a share of all main token-turns (pooled). Calls, projects and last call count every eligible main session. At most 15 tools.
 
-| Tool | Carried in | Called in | Projects calling | Last call | Median ≈tokens | Unused token-turns | Share of main input |
-|---|---:|---:|---:|---|---:|---:|---:|
-| Artifact | 3 | 0 | 0 | — | ≈1.0k | ≈11.8k | 11.7% |
-| Read | 3 | 2 | 1 | 2026-09-21 | ≈200 | ≈1.2k | 1.2% |
-| Bash | 3 | 1 | 1 | 2026-09-22 | ≈200 | ≈1.1k | 1.1% |
-| SendFeedback | 1 | 0 | 0 | — | ≈80 | ≈400 | 0.4% |
-| Edit | 2 | 1 | 1 | 2026-09-21 | ≈52 | ≈210 | 0.2% |
-| ToolSearch | 1 | 0 | 0 | — | ≈33 | ≈133 | 0.1% |
-| MCP tools of zzsrv (loaded upfront) † | 1 | 0 | 0 | — | ≈32 | ≈129 | 0.1% |
-| Skill | 1 | 1 | 1 | 2026-09-20 | ≈31 | ≈0 | 0.0% |
-| Workflow | 1 | 1 | 1 | 2026-09-22 | ≈200 | ≈0 | 0.0% |
-| MCP tools of zzdb (loaded upfront) † | 1 | 1 | 1 | 2026-09-21 | ≈100 | ≈0 | 0.0% |
+| Tool | Carried in | Called in | Projects calling | Last call | Median ≈tokens | Unused token-turns | Share of main input | Lever |
+|---|---:|---:|---:|---|---:|---:|---:|---|
+| Artifact | 3 | 0 | 0 | — | ≈1.0k | ≈11.8k | 11.7% | disable-artifact |
+| Read | 3 | 2 | 1 | 2026-09-21 | ≈200 | ≈1.2k | 1.2% | no known safe lever |
+| Bash | 3 | 1 | 1 | 2026-09-22 | ≈200 | ≈1.1k | 1.1% | no known safe lever |
+| SendFeedback | 1 | 0 | 0 | — | ≈80 | ≈400 | 0.4% | disable-sendfeedback |
+| Edit | 2 | 1 | 1 | 2026-09-21 | ≈52 | ≈210 | 0.2% | no known safe lever |
+| ToolSearch | 1 | 0 | 0 | — | ≈33 | ≈133 | 0.1% | no known safe lever |
+| MCP tools of zzsrv (loaded upfront) † | 1 | 0 | 0 | — | ≈32 | ≈129 | 0.1% | mcp |
+| Skill | 1 | 1 | 1 | 2026-09-20 | ≈31 | ≈0 | 0.0% | no known safe lever |
+| Workflow | 1 | 1 | 1 | 2026-09-22 | ≈200 | ≈0 | 0.0% | disable-workflows |
+| MCP tools of zzdb (loaded upfront) † | 1 | 1 | 1 | 2026-09-21 | ≈100 | ≈0 | 0.0% | mcp |
 
 † MCP tools loaded upfront — tool search may be off (check ENABLE_TOOL_SEARCH, ANTHROPIC_BASE_URL, alwaysLoad); detection unverified.
 
@@ -87,6 +87,57 @@ CLAUDE.md, imported and memory files loaded before the first call, ranked by med
 | /home/zzuser/zzproj/docs/RULES.md | Project (non-CLAUDE.md, likely @import) | 1 | ≈34 |
 | /home/zzuser/.claude/projects/-home-zzuser-zzproj/memory/MEMORY.md | AutoMem | 1 | ≈25 |
 | /home/zzuser/CLAUDE.md | Project | 1 | ≈19 |
+
+## Suggested levers
+
+Catalogued levers whose user-scope saving reaches 0.5% of main token-turns (`MinBenefit`), ranked by that saving. Savings are ≈tokens from your own sessions; levers overlap, so they are never added up. Snippets use User, Local, Env or Flag scope only — never a committed project settings file, which would change the setting for every collaborator.
+
+### 1. instructions: /home/zzuser/work/CLAUDE.md (Project)
+
+- **Status:** UNVERIFIED: documented at https://code.claude.com/docs/en/memory
+- **Action:** exclude: a Project file above the project directory of every session that loaded it; exclude it there with the Local snippet.
+- **Saving, user scope** (every decomposed session loading it): ≈3.1k tokens per call over 1 session (6 calls) · 18.6% of main token-turns.
+- **Saving, project scope** (Local snippet, one per project; 1 project loaded it): ≈3.1k tokens per call over 1 session (6 calls) · 18.6% of main token-turns.
+- **Snippets:**
+  - Local (`.claude/settings.local.json`, gitignored): `"claudeMdExcludes": ["/home/zzuser/work/CLAUDE.md"]`
+- **Trade-off:** Excluded files' instructions are lost; turning auto memory off also stops Claude from saving new memories
+- **Docs:** https://code.claude.com/docs/en/memory
+
+### 2. disable-artifact: tool Artifact
+
+- **Status:** VERIFIED 2.1.283 (gate 0): n=1 per mechanism; Local enableArtifact −13,382; env −11,740; flag −12,864; Local deny −12,866; ≈54.3k bytes removed
+- **Saving, user scope** (every decomposed session carrying it): ≈788 tokens per call over 3 sessions (15 calls) · 11.7% of main token-turns.
+- **Saving, project scope** (Local snippet, one per project; 2 projects never called it): ≈788 tokens per call over 3 sessions (15 calls) · 11.7% of main token-turns.
+- **Usage:** called in 0 of 5 sessions, 0 projects, last used —.
+- **Observed presence:** Artifact last sent on 2026-09-22 (Claude Code 2.1.283); absent from the 1 most recent session with a tool snapshot (1 project). Presence reflects past launches, not current settings.
+- **Snippets:**
+  - User (`~/.claude/settings.json`): `"enableArtifact": false` — no other settings file can re-enable it; delete this line to undo.
+  - Local (`.claude/settings.local.json`, gitignored): `"enableArtifact": false` — no other settings file can re-enable it; delete this line to undo.
+  - Env: `CLAUDE_CODE_DISABLE_ARTIFACT=1 claude`
+  - Flag: `claude --disallowedTools Artifact`
+- **Trade-off:** Claude can no longer publish pages; off wins everywhere (Local/Project honoured from 2.1.242)
+- **Docs:** https://code.claude.com/docs/en/settings-reference
+
+### 3. disable-workflows: tool Workflow
+
+- **Status:** UNVERIFIED: documented at https://code.claude.com/docs/en/settings-reference
+- **Saving, user scope** (every decomposed session carrying it): ≈200 tokens per call over 1 session (6 calls) · 1.2% of main token-turns.
+- **Saving, project scope** (Local snippet, projects that never called it): none — every project carrying it also called it.
+- **Usage:** called in 1 of 5 sessions, 1 project, last used 2026-09-22. You do use this tool: disabling it takes it away from those sessions too.
+- **Observed presence:** Workflow last sent on 2026-09-22 (Claude Code 2.1.283); absent from the 1 most recent session with a tool snapshot (1 project). Presence reflects past launches, not current settings.
+- **Snippets:**
+  - User (`~/.claude/settings.json`): `"enableWorkflows": false`
+  - Local (`.claude/settings.local.json`, gitignored): `"enableWorkflows": false`
+- **Trade-off:** Also removes bundled workflow commands, `/workflow-authoring` and the ultracode keyword
+- **Docs:** https://code.claude.com/docs/en/settings-reference
+
+### 4. mcp: MCP (deferred tool names, instructions, surfaced schemas)
+
+- **Status:** UNVERIFIED: documented at https://code.claude.com/docs/en/mcp
+- **Saving, user scope** (every decomposed session carrying it): ≈59 tokens per call over 2 sessions (9 calls) · 0.5% of main token-turns.
+- **Snippets:** none (informational).
+- **Trade-off:** Informational: per-server mechanisms are `permissions.deny ["mcp__<server>"]` and `deniedMcpServers [{"serverName": "…"}]`; both block that server's tools
+- **Docs:** https://code.claude.com/docs/en/mcp
 
 ## Limitations
 
