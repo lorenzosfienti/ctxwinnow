@@ -151,6 +151,30 @@ func TestRenderSections(t *testing.T) {
 	}
 }
 
+// TestRenderLimitationsAuthorFigures: the fixed figures in Limitations come from the author's
+// sessions, not the reader's, and the report says so; "owner data" read as the reader's own data.
+func TestRenderLimitationsAuthorFigures(t *testing.T) {
+	sum := goldenSummary(t)
+	for _, rep := range []*Report{
+		{Version: "test", Summary: sum, Levers: Evaluate(sum)},
+		{Version: "test", Summary: Summarize(nil, Options{MinTurns: 20})},
+	} {
+		out := render(t, rep)
+		if strings.Contains(strings.ToLower(out), "owner") {
+			t.Errorf("report mentions the owner:\n%s", out)
+		}
+		lim := section(t, out, "Limitations")
+		for _, want := range []string{
+			"count the same (measured on the author's sessions, not yours: API-weighted pooled share 17.2% vs 17.7%;",
+			"after B (≈0.4k tokens p50, measured on the author's sessions).\n",
+		} {
+			if !strings.Contains(lim, want) {
+				t.Errorf("Limitations lack %q:\n%s", want, lim)
+			}
+		}
+	}
+}
+
 // TestRenderP90 prints B p90 only from MinP90N sessions.
 func TestRenderP90(t *testing.T) {
 	var xs []tsess

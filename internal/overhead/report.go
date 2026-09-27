@@ -575,8 +575,8 @@ func renderLimitations(b *strings.Builder, s *Summary) {
 	p("- A transcript is not the wire request: the auto-mode template and wire-only reminders are invisible and end up spread over the non-tool components.\n")
 	p("- %s eligible main sessions could not be decomposed (no tool snapshot or sanity guard); they still count for B and token-turns.\n",
 		fmtInt(c.OldVersion+c.NoSnapshot+c.Sanity))
-	p("- Token-turns are unweighted: cached and uncached input count the same (owner data: API-weighted pooled share 17.2%% vs 17.7%%; 99.4%% of later calls read ≥ 0.9·B from cache).\n")
-	p("- MCP servers still connecting at the first call add their deferred tool names after B (≈0.4k tokens p50 in owner data).\n")
+	p("- Token-turns are unweighted: cached and uncached input count the same (measured on the author's sessions, not yours: API-weighted pooled share 17.2%% vs 17.7%%; 99.4%% of later calls read ≥ 0.9·B from cache).\n")
+	p("- MCP servers still connecting at the first call add their deferred tool names after B (≈0.4k tokens p50, measured on the author's sessions).\n")
 	p("- Subagent baselines are measured but not decomposed.\n")
 	p("- Only transcripts Claude Code still keeps are measured (`cleanupPeriodDays`, default 30 days).\n")
 	p("- Observed tool presence reflects past launches, not current settings; levers marked UNVERIFIED are documented but not measured on the wire.\n")
