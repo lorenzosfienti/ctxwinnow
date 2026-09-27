@@ -14,7 +14,7 @@ binary, and every cut is explained. Portfolio project.
 
 ## Layout
 
-- `compress/`: the engine. Step 0 ships only `Policy`, which is permanent code.
+- `internal/policy/`: `Policy`, the compression gate by tool name and Bash command (moved from `compress/` in 0.2).
 - `internal/transcript/`: Claude Code transcript reader.
 - `internal/ceiling/`: step 0 analysis and markdown report.
 - `cmd/ctxwinnow/`: the CLI.

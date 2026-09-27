@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/lorenzosfienti/ctxwinnow/compress"
+	"github.com/lorenzosfienti/ctxwinnow/internal/policy"
 	"github.com/lorenzosfienti/ctxwinnow/internal/transcript"
 )
 
@@ -49,22 +49,22 @@ func Classify(r transcript.ToolResult) Category {
 	if r.NonText {
 		return CatNonText
 	}
-	v, _ := compress.Policy(r.ToolName, r.ToolInput, r.IsError)
+	v, _ := policy.Policy(r.ToolName, r.ToolInput, r.IsError)
 	switch v {
-	case compress.PassTool:
+	case policy.PassTool:
 		return CatPassTool
-	case compress.PassError:
+	case policy.PassError:
 		return CatError
 	}
 	if exitCodeRe.MatchString(r.Text) {
 		return CatError
 	}
 	switch v {
-	case compress.PassBashRead:
+	case policy.PassBashRead:
 		return CatBashRead
-	case compress.PassBashSearch:
+	case policy.PassBashSearch:
 		return CatBashSearch
-	case compress.PassUnparseable:
+	case policy.PassUnparseable:
 		return CatUnparseable
 	}
 	switch {

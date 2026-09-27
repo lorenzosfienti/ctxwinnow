@@ -1,6 +1,6 @@
-// Package compress holds ctxwinnow's compression engine. Step 0 ships only Policy, the gate
-// that decides from the tool call alone whether an output may be compressed.
-package compress
+// Package policy holds the compression gate moved from compress/ in 0.2: it decides from the tool
+// call alone whether an output may be compressed.
+package policy
 
 import (
 	"encoding/json"

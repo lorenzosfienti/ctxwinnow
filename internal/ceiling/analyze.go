@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/lorenzosfienti/ctxwinnow/compress"
+	"github.com/lorenzosfienti/ctxwinnow/internal/policy"
 	"github.com/lorenzosfienti/ctxwinnow/internal/transcript"
 )
 
@@ -170,7 +170,7 @@ func (g *GroupStats) addResult(r transcript.ToolResult, cat Category, tok, saved
 	}
 	g.LosslessSaved += saved
 	if r.ToolName == "Bash" {
-		key := compress.BashHead(r.ToolInput)
+		key := policy.BashHead(r.ToolInput)
 		if key == "" {
 			key = "(unknown)"
 		}

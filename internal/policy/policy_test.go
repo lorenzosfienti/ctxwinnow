@@ -1,4 +1,4 @@
-package compress
+package policy
 
 import (
 	"encoding/json"
