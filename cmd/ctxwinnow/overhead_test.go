@@ -272,6 +272,36 @@ func TestResolveRoot(t *testing.T) {
 	}
 }
 
+// TestRootErrorCause: a root that exists but cannot be used prints why (the error names the path),
+// not just "no transcripts directory found"; a missing root prints no cause line.
+func TestRootErrorCause(t *testing.T) {
+	tmp := t.TempDir()
+	file := filepath.Join(tmp, "file.jsonl")
+	if err := os.WriteFile(file, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := resolveRoot(file, nil)
+	if !errors.Is(err, errNotDir) || !strings.Contains(err.Error(), "\ncause: "+file+": not a directory\n") {
+		t.Errorf("root is a file: %v", err)
+	}
+	_, err = resolveRoot(filepath.Join(tmp, "missing"), nil)
+	if !errors.Is(err, fs.ErrNotExist) || strings.Contains(err.Error(), "cause:") {
+		t.Errorf("missing root: %v", err)
+	}
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		return // permissions do not deny reading a directory here
+	}
+	locked := filepath.Join(tmp, "locked")
+	if err := os.Mkdir(locked, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(locked, 0o755) })
+	_, err = resolveRoot(locked, nil)
+	if !errors.Is(err, fs.ErrPermission) || !strings.Contains(err.Error(), "\ncause: open "+locked+": ") {
+		t.Errorf("unreadable root: %v", err)
+	}
+}
+
 // TestSymlinkedRoot: a transcripts root that is itself a symlink (a ~/.claude/projects moved to
 // another disk, a dotfile manager) is scanned like its target, whether it is given with --root or
 // found as a default candidate. filepath.WalkDir alone does not descend into a symlinked root, so

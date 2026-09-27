@@ -25,8 +25,8 @@ func defaultRoots(getenv func(string) string, home func() (string, error)) []str
 	return roots
 }
 
-// rootError lists every root tried; Unwrap returns the underlying error (fs.ErrNotExist when
-// nothing exists).
+// rootError lists every root tried and, unless nothing exists, the first problem ("cause: …");
+// Unwrap returns the underlying error (fs.ErrNotExist when nothing exists).
 type rootError struct {
 	Tried []string
 	Err   error
@@ -40,6 +40,9 @@ func (e *rootError) Error() string {
 	}
 	for _, p := range e.Tried {
 		b.WriteString("  " + p + "\n")
+	}
+	if e.Err != nil && !errors.Is(e.Err, fs.ErrNotExist) {
+		b.WriteString("cause: " + e.Err.Error() + "\n")
 	}
 	b.WriteString("pass --root DIR to point at your Claude Code projects directory")
 	return b.String()
@@ -85,7 +88,7 @@ func readableDir(p string) error {
 		return err
 	}
 	if !fi.IsDir() {
-		return errNotDir
+		return fmt.Errorf("%s: %w", p, errNotDir)
 	}
 	f, err := os.Open(p)
 	if err != nil {

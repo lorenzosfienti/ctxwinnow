@@ -47,6 +47,8 @@ All notable changes to this project are documented here. The format follows
   `/Users/a/app-legacy`.
 - A transcripts root that is itself a symlink (for example a `~/.claude/projects` moved to another
   disk) is scanned like its target; both commands used to find 0 sessions there.
+- A transcripts root that exists but cannot be used (not a directory, permission denied) prints the
+  cause after the paths tried instead of only "no transcripts directory found".
 
 ## [0.1.0] - 2026-09-26
 
