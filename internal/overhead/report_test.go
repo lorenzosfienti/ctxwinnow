@@ -433,3 +433,81 @@ func TestUnusedLeverColumn(t *testing.T) {
 		}
 	}
 }
+
+// TestRenderCompareGolden renders the compare fixture split at 2026-09-10 (with levers) and checks
+// that "## Before and after" sits right after the header block, before "## Baseline".
+func TestRenderCompareGolden(t *testing.T) {
+	sum := Summarize(compareSessions(), Options{MinTurns: 3})
+	c := Compare(sum, instant("2026-09-10T00:00:00Z"))
+	out := render(t, &Report{Version: "test", Summary: sum, Levers: Evaluate(sum), Compare: c})
+	i, j := strings.Index(out, "\n## Before and after\n"), strings.Index(out, "\n## Baseline\n")
+	if i < 0 || j < i || strings.Count(out[:i], "\n## ") != 0 {
+		t.Errorf("## Before and after must be the first section, before ## Baseline (at %d, %d)", i, j)
+	}
+	goldenFile(t, "report_compare.golden", out)
+}
+
+// TestRenderCompareEdges: an empty side and a single before-session print both sides, "n/a" for
+// what cannot be computed, the fewer-than-20 warning, and never NaN or Inf.
+func TestRenderCompareEdges(t *testing.T) {
+	sum := Summarize(compareSessions(), Options{MinTurns: 3})
+	single := Summarize(built(
+		bsess("a/b1.jsonl", "/w/a", "2026-09-01T10:00:00Z", 2200),
+		bsess("a/a1.jsonl", "/w/a", "2026-09-11T10:00:00Z", 1350),
+	), Options{MinTurns: 1})
+	for _, tc := range []struct {
+		name string
+		sum  *Summary
+		at   string
+		want []string
+	}{
+		{"empty after", sum, "2026-09-27T00:00:00Z", []string{
+			"| before | 10 | 2026-09-01 | 2026-09-13 | 2.1.270–2.1.283 (2 versions) | 2,100 | 2,400 | 10 |\n",
+			"| after | 0 | — | — | — | — | — | 0 |\n",
+			"- **Paired delta (primary):** n/a: no project has sessions on both sides.\n",
+			"- **Unpaired delta:** n/a: a side has no session.\n",
+			"- **Saving:** n/a (needs a paired delta).\n",
+			"_Components and drift: n/a (needs decomposed sessions on both sides)._\n",
+			"> **Fewer than 20 sessions on a side** (before 10, after 0)",
+		}},
+		{"empty before", sum, "2026-08-01T00:00:00Z", []string{"| before | 0 | — | — | — | — | — | 0 |\n", "(before 0, after 10)"}},
+		{"single before", single, "2026-09-10T00:00:00Z", []string{
+			"- **Paired delta (primary):** -850 tokens: median over 1 project with sessions on both sides of (median B after − median B before); covers 1 of 1 after-sessions.\n",
+			"- **Unpaired delta:** -850 tokens (median B after − median B before). Noise floor: n/a (needs at least 2 sessions before the split).\n",
+		}},
+	} {
+		out := render(t, &Report{Version: "test", Summary: tc.sum, Levers: Evaluate(tc.sum), Compare: Compare(tc.sum, instant(tc.at))})
+		cmp := section(t, out, "Before and after")
+		for _, w := range tc.want {
+			if !strings.Contains(cmp, w) {
+				t.Errorf("%s: compare section lacks %q:\n%s", tc.name, w, cmp)
+			}
+		}
+		for _, bad := range []string{"NaN", "Inf", "%!"} {
+			if strings.Contains(out, bad) {
+				t.Errorf("%s: report contains %q:\n%s", tc.name, bad, out)
+			}
+		}
+	}
+}
+
+// TestRenderCompareRedacted: removed and appeared components go through the redactor (instruction
+// files keep their Instruction files label).
+func TestRenderCompareRedacted(t *testing.T) {
+	md := instr("/w/p/CLAUDE.md", "Project", 900)
+	sum := Summarize(built(
+		csess("p/b1.jsonl", "/w/p", "2026-09-01T10:00:00Z", 3, []transcript.Attachment{md}, tool("Bash", 450), tool("zzgone", 450)),
+		csess("p/a1.jsonl", "/w/p", "2026-09-11T10:00:00Z", 3, nil, tool("Bash", 450), tool("zzlate", 450)),
+	), Options{MinTurns: 1})
+	out := render(t, &Report{Version: "test", Redact: true, Summary: sum, Compare: Compare(sum, instant("2026-09-10T00:00:00Z"))})
+	cmp := section(t, out, "Before and after")
+	for _, want := range []string{"| removed | file-1 (Project) | 100.0% | 0.0% | 900 | ≈-300 |\n",
+		"| removed | tool tool-1 | 100.0% | 0.0% | 450 | ≈-100 |\n", "| appeared | tool tool-2 | 0.0% | 100.0% | 450 | ≈+100 |\n"} {
+		if !strings.Contains(cmp, want) {
+			t.Errorf("redacted compare lacks %q:\n%s", want, cmp)
+		}
+	}
+	if strings.Contains(out, "zz") || strings.Contains(out, "/w/p") {
+		t.Errorf("redacted report leaks a name or path:\n%s", out)
+	}
+}

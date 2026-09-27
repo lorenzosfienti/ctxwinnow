@@ -10,19 +10,20 @@ import (
 	"time"
 )
 
-// Report is everything Render prints. T9 adds `Compare *Comparison`.
+// Report is everything Render prints.
 type Report struct {
 	Version string // internal/version.Version (tests use "test")
 	Redact  bool   // --redact
 	Summary *Summary
 	Levers  []LeverResult // Evaluate(Summary); only Printable results are rendered
+	Compare *Comparison   // Compare(Summary, --compare); nil without --compare
 }
 
 // Render writes the markdown report. It builds one Redactor(r.Redact), labels the instruction files
 // in table order (so file-N follows the Instruction files table whatever section prints first), then
-// calls renderHeader and, when there is at least one eligible main session, renderBaseline,
-// renderComponents, renderUnused, renderInstructions and renderLevers; renderLimitations always
-// closes the report.
+// calls renderHeader, renderCompare (with --compare) and, when there is at least one eligible main
+// session, renderBaseline, renderComponents, renderUnused, renderInstructions and renderLevers;
+// renderLimitations always closes the report.
 // Only names, sizes, counts, dates, instruction-file paths and project prefixes are printed.
 func Render(w io.Writer, r *Report) error {
 	var b strings.Builder
@@ -32,6 +33,9 @@ func Render(w io.Writer, r *Report) error {
 		red.Name(FileClass(in.Label), in.Path)
 	}
 	renderHeader(&b, r, red)
+	if r.Compare != nil {
+		renderCompare(&b, r.Compare, red)
+	}
 	if s.Counts.Main > 0 {
 		renderBaseline(&b, s)
 		renderComponents(&b, s, red)
@@ -250,6 +254,113 @@ func renderInstructions(b *strings.Builder, s *Summary, red *Redactor) {
 			fmtInt(in.Sessions), fmtTok(in.MedianTokens))
 	}
 	p("\n")
+}
+
+// renderCompare writes "## Before and after": both sides, the paired delta with its coverage, the
+// unpaired delta with its noise floor, the counterfactual saving, removed and appeared components
+// with predicted ≈tokens, everything else and drift. What cannot be computed prints "n/a".
+func renderCompare(b *strings.Builder, c *Comparison, red *Redactor) {
+	p := printer(b)
+	p("## Before and after\n\n")
+	p("Split at %s: **before** = eligible main sessions whose first timestamp is earlier, **after** = sessions starting on or after it (a settings change applies to sessions started after it). B deltas are exact tokens; component predictions are estimates (≈).\n\n",
+		fmtInstant(c.At))
+	if c.FewSessions {
+		p("> **Fewer than %d sessions on a side** (before %s, after %s): the report still prints; weigh every delta against the noise floor.\n\n",
+			FewSessions, fmtInt(c.Before.N), fmtInt(c.After.N))
+	}
+	p("| Side | Sessions | First | Last | Claude Code | B p50 | B p90 | Decomposed |\n|---|---:|---|---|---|---:|---:|---:|\n")
+	sideLine(b, "before", c.Before)
+	sideLine(b, "after", c.After)
+	p("\n")
+	if (c.Before.N > 0 && !c.Before.HasP90) || (c.After.N > 0 && !c.After.HasP90) {
+		p("B p90 is printed only from %d sessions.\n\n", MinP90N)
+	}
+	if c.Paired {
+		p("- **Paired delta (primary):** %s tokens: median over %s with sessions on both sides of (median B after − median B before); covers %s of %s after-sessions.\n",
+			fmtSigned(c.PairedDelta), plural(c.PairedProjects, "project"), fmtInt(c.PairedAfter), fmtInt(c.After.N))
+	} else {
+		p("- **Paired delta (primary):** n/a: no project has sessions on both sides.\n")
+	}
+	switch {
+	case !c.HasUnpaired:
+		p("- **Unpaired delta:** n/a: a side has no session.\n")
+	case c.NoiseK == 0:
+		p("- **Unpaired delta:** %s tokens (median B after − median B before). Noise floor: n/a (needs at least 2 sessions before the split).\n",
+			fmtSigned(c.UnpairedDelta))
+	default:
+		p("- **Unpaired delta:** %s tokens (median B after − median B before). Differences smaller than ±%s are indistinguishable from session mix at this n (%.0fth percentile of |median difference| over %s random splits of the before side into two groups of %s).\n",
+			fmtSigned(c.UnpairedDelta), fmtInt(int(math.Round(c.NoiseFloor))), NoiseQuantile*100, fmtInt(NoiseSplits), fmtInt(c.NoiseK))
+	}
+	switch {
+	case !c.Paired:
+		p("- **Saving:** n/a (needs a paired delta).\n")
+	case c.PairedDelta < 0:
+		p("- **Saving:** %s of after-side input: |paired delta| × after-side calls / after-side input, the input the after-side sessions would have added at the before-side baseline.\n",
+			fmtPct(c.Saving))
+	case c.PairedDelta > 0:
+		p("- **Extra cost:** %s of after-side input: |paired delta| × after-side calls / after-side input, the input the after-side sessions read beyond the before-side baseline.\n",
+			fmtPct(c.Saving))
+	default:
+		p("- **Saving:** none (the paired delta is 0).\n")
+	}
+	p("\n")
+	if c.Before.Decomposed == 0 || c.After.Decomposed == 0 {
+		p("_Components and drift: n/a (needs decomposed sessions on both sides)._\n\n")
+		return
+	}
+	if len(c.Removed)+len(c.Appeared) == 0 {
+		p("No component was removed or appeared (removed = present in ≥ %.0f%% of before decomposed sessions and ≤ %.0f%% after; appeared = the reverse).\n\n",
+			RemovedBefore*100, RemovedAfter*100)
+	} else {
+		p("Removed = present in ≥ %.0f%% of before decomposed sessions and ≤ %.0f%% after; appeared = the reverse. Predicted ≈tokens come from bytes: tool JSON at %.1f bytes per token, other components at that side's median remainder rate.\n\n",
+			RemovedBefore*100, RemovedAfter*100, toolJSONBytesPerToken)
+		p("| Change | Component | Before | After | Median bytes | Predicted ≈tokens |\n|---|---|---:|---:|---:|---:|\n")
+		for _, d := range c.Removed {
+			compDeltaLine(b, "removed", d, red)
+		}
+		for _, d := range c.Appeared {
+			compDeltaLine(b, "appeared", d, red)
+		}
+		p("\n")
+	}
+	if c.Paired {
+		p("Everything else: %s (paired delta − Σ predicted).\n\n", fmtDelta(c.EverythingElse))
+	} else {
+		p("Everything else: n/a (needs a paired delta).\n\n")
+	}
+	if len(c.Drift) == 0 {
+		p("No tool definition present on both sides changed its median size by %.0f%% or more.\n\n", DriftMin*100)
+		return
+	}
+	p("**Drift:** tool definitions present on both sides whose median size changed by ≥ %.0f%% (bytes, not tokens); a Claude Code upgrade can move B without any settings change.\n\n",
+		DriftMin*100)
+	p("| Tool | Before bytes | After bytes | Change |\n|---|---:|---:|---:|\n")
+	for _, d := range c.Drift {
+		sign := ""
+		if d.Change > 0 {
+			sign = "+"
+		}
+		p("| %s | %s | %s | %s%s |\n", mdEscape(red.Name(ClassTool, d.Tool)), fmtInt(d.BeforeBytes), fmtInt(d.AfterBytes), sign, fmtPct(d.Change))
+	}
+	p("\n")
+}
+
+func sideLine(b *strings.Builder, label string, sd Side) {
+	if sd.N == 0 {
+		fmt.Fprintf(b, "| %s | 0 | — | — | — | — | — | 0 |\n", label)
+		return
+	}
+	p90 := "—"
+	if sd.HasP90 {
+		p90 = fmtInt(sd.BP90)
+	}
+	fmt.Fprintf(b, "| %s | %s | %s | %s | %s | %s | %s | %s |\n", label, fmtInt(sd.N), fmtDay(sd.First), fmtDay(sd.Last),
+		mdEscape(sd.Versions), fmtInt(sd.BP50), p90, fmtInt(sd.Decomposed))
+}
+
+func compDeltaLine(b *strings.Builder, change string, d CompDelta, red *Redactor) {
+	fmt.Fprintf(b, "| %s | %s | %s | %s | %s | %s |\n", change, mdEscape(componentName(d.Kind, d.Name, red)),
+		fmtPct(d.BeforePresence), fmtPct(d.AfterPresence), fmtInt(d.Bytes), fmtDelta(d.Predicted))
 }
 
 // renderLevers writes "## Suggested levers": every Printable result of r.Levers in Evaluate order
@@ -529,6 +640,24 @@ func fmtTok(x float64) string {
 		return fmt.Sprintf("≈%s%.1fk", sign, x/1000)
 	}
 	return fmt.Sprintf("≈%s%.0f", sign, r)
+}
+
+// fmtSigned: an exact token delta with its sign: -850.0 → "-850"; 1234 → "+1,234"; 0 → "0".
+func fmtSigned(x float64) string {
+	n := int(math.Round(x))
+	if n > 0 {
+		return "+" + fmtInt(n)
+	}
+	return fmtInt(n)
+}
+
+// fmtDelta: fmtTok with an explicit "+" on positive values: 100 → "≈+100"; -1000 → "≈-1.0k"; 0.2 → "≈0".
+func fmtDelta(x float64) string {
+	s := fmtTok(x)
+	if x > 0 && s != "≈0" {
+		return "≈+" + strings.TrimPrefix(s, "≈")
+	}
+	return s
 }
 
 // fmtPct: 0.1774 → "17.7%".

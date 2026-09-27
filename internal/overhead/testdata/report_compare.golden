@@ -1,0 +1,134 @@
+# ctxwinnow overhead — fixed per-call context report
+
+ctxwinnow test · sessions whose first timestamp is in [open, open) · min turns 3
+
+- **Sessions:** 10 scanned · 10 eligible main · 0 eligible subagent · 10 main decomposed.
+- **Excluded:** 0 too few turns · 0 no usage · 0 filtered · 0 fork (inherits parent context) · 0 continuation.
+- **Not decomposed** (eligible main): 0 no tool snapshot (0 pre-2.1.259, 0 other) · 0 sanity guard.
+- **Input:** 0 files skipped · 0 malformed lines · 0 sessions compacted before the first call.
+- **Oldest session:** 2026-09-01. Claude Code keeps transcripts `cleanupPeriodDays` days (default 30); deleted sessions cannot be measured.
+- **Entrypoints** (eligible main): cli 10.
+- **Claude Code versions** (eligible): 2.1.270–2.1.283.
+- **Attribution:** tool JSON at 4.5 bytes per token (`toolJSONBytesPerToken`, band 4.0–4.8); the other components share the rest of B by bytes (median remainder rate: 3.00 bytes per token). B is exact; component figures are estimates (≈).
+
+## Before and after
+
+Split at 2026-09-10T00:00:00Z: **before** = eligible main sessions whose first timestamp is earlier, **after** = sessions starting on or after it (a settings change applies to sessions started after it). B deltas are exact tokens; component predictions are estimates (≈).
+
+> **Fewer than 20 sessions on a side** (before 6, after 4): the report still prints; weigh every delta against the noise floor.
+
+| Side | Sessions | First | Last | Claude Code | B p50 | B p90 | Decomposed |
+|---|---:|---|---|---|---:|---:|---:|
+| before | 6 | 2026-09-01 | 2026-09-06 | 2.1.270–2.1.283 (2 versions) | 2,200 | — | 6 |
+| after | 4 | 2026-09-10 | 2026-09-13 | 2.1.283 | 1,350 | — | 4 |
+
+B p90 is printed only from 10 sessions.
+
+- **Paired delta (primary):** -850 tokens: median over 2 projects with sessions on both sides of (median B after − median B before); covers 3 of 4 after-sessions.
+- **Unpaired delta:** -850 tokens (median B after − median B before). Differences smaller than ±200 are indistinguishable from session mix at this n (95th percentile of |median difference| over 1,000 random splits of the before side into two groups of 3).
+- **Saving:** 60.1% of after-side input: |paired delta| × after-side calls / after-side input, the input the after-side sessions would have added at the before-side baseline.
+
+Removed = present in ≥ 50% of before decomposed sessions and ≤ 5% after; appeared = the reverse. Predicted ≈tokens come from bytes: tool JSON at 4.5 bytes per token, other components at that side's median remainder rate.
+
+| Change | Component | Before | After | Median bytes | Predicted ≈tokens |
+|---|---|---:|---:|---:|---:|
+| removed | tool Artifact | 100.0% | 0.0% | 4,500 | ≈-1.0k |
+| appeared | tool Monitor | 0.0% | 100.0% | 450 | ≈+100 |
+
+Everything else: ≈+50 (paired delta − Σ predicted).
+
+**Drift:** tool definitions present on both sides whose median size changed by ≥ 20% (bytes, not tokens); a Claude Code upgrade can move B without any settings change.
+
+| Tool | Before bytes | After bytes | Change |
+|---|---:|---:|---:|
+| Read | 450 | 675 | +50.0% |
+
+## Baseline
+
+B is the context of a session's first call (input + cache read + cache creation): exact. Every call re-reads it, so its token-turns share is B × N / Σ context over the session's N calls.
+
+**Pooled share (headline): 100.0%** of all input read by the 10 eligible main sessions is the fixed baseline. Typical session: 100.0% (median of per-session shares, median N = 5; this mostly reflects session length).
+
+| Sessions | n | B p50 | B p90 | Pooled share | Typical session | Median N |
+|---|---:|---:|---:|---:|---:|---:|
+| main | 10 | 2,100 | 2,400 | 100.0% | 100.0% | 5 |
+| subagent (fixed overhead + task prompt) | 0 | — | — | — | — | — |
+
+## What the baseline is made of
+
+10 of 10 eligible main sessions decomposed. Tool JSON is converted at 4.5 bytes per token; the rest of B is shared by the other components in proportion to their bytes, so components sum to B. Median ≈tokens is taken where the component is present.
+
+| Component | Sessions | Median ≈tokens | Share of B |
+|---|---:|---:|---:|
+| system prompt | 10 | ≈1.0k | 51.8% |
+| tool Artifact | 6 | ≈1.0k | 31.1% |
+| tool Read | 9 | ≈100 | 5.7% |
+| tool Bash | 10 | ≈100 | 5.2% |
+| tool Workflow | 3 | ≈200 | 3.1% |
+| tool Monitor | 4 | ≈100 | 2.1% |
+| tool Grep | 2 | ≈100 | 1.0% |
+
+## Paid for but unused
+
+Unused cost of a tool = Σ over decomposed main sessions that carry it and never call it of its ≈tokens × N, as a share of all main token-turns (pooled). Calls, projects and last call count every eligible main session. At most 15 tools.
+
+| Tool | Carried in | Called in | Projects calling | Last call | Median ≈tokens | Unused token-turns | Share of main input | Lever |
+|---|---:|---:|---:|---|---:|---:|---:|---|
+| Artifact | 6 | 0 | 0 | — | ≈1.0k | ≈31.0k | 30.5% | disable-artifact |
+| Read | 9 | 0 | 0 | — | ≈100 | ≈5.9k | 5.8% | no known safe lever |
+| Bash | 10 | 0 | 0 | — | ≈100 | ≈5.3k | 5.2% | no known safe lever |
+| Workflow | 3 | 0 | 0 | — | ≈200 | ≈3.0k | 3.0% | disable-workflows |
+| Monitor | 4 | 0 | 0 | — | ≈100 | ≈2.2k | 2.2% | no known safe lever |
+| Grep | 2 | 0 | 0 | — | ≈100 | ≈1.1k | 1.1% | no known safe lever |
+
+| Listing | Sessions | Median ≈tokens per call | Detail |
+|---|---:|---:|---|
+| skill listing | 0 | — | no skill listing in the decomposed sessions |
+| MCP (deferred tool names, instructions, surfaced schemas) | 0 | — | servers carried: none; servers called: none |
+
+## Instruction files
+
+_No instruction file was loaded in the decomposed sessions._
+
+## Suggested levers
+
+Catalogued levers whose user-scope saving reaches 0.5% of main token-turns (`MinBenefit`), ranked by that saving. Savings are ≈tokens from your own sessions; levers overlap, so they are never added up. Snippets use User, Local, Env or Flag scope only — never a committed project settings file, which would change the setting for every collaborator.
+
+### 1. disable-artifact: tool Artifact
+
+- **Status:** VERIFIED 2.1.283 (gate 0): n=1 per mechanism; Local enableArtifact −13,382; env −11,740; flag −12,864; Local deny −12,866; ≈54.3k bytes removed
+- **Saving, user scope** (every decomposed session carrying it): ≈1.0k tokens per call over 6 sessions (31 calls) · 30.5% of main token-turns.
+- **Saving, project scope** (Local snippet, one per project; 3 projects never called it): ≈1.0k tokens per call over 6 sessions (31 calls) · 30.5% of main token-turns.
+- **Usage:** called in 0 of 10 sessions, 0 projects, last used —.
+- **Observed presence:** Artifact last sent on 2026-09-06 (Claude Code 2.1.283); absent from the 4 most recent sessions with a tool snapshot (3 projects). Presence reflects past launches, not current settings.
+- **Snippets:**
+  - User (`~/.claude/settings.json`): `"enableArtifact": false` — no other settings file can re-enable it; delete this line to undo.
+  - Local (`.claude/settings.local.json`, gitignored): `"enableArtifact": false` — no other settings file can re-enable it; delete this line to undo.
+  - Env: `CLAUDE_CODE_DISABLE_ARTIFACT=1 claude`
+  - Flag: `claude --disallowedTools Artifact`
+- **Trade-off:** Claude can no longer publish pages; off wins everywhere (Local/Project honoured from 2.1.242)
+- **Docs:** https://code.claude.com/docs/en/settings-reference
+
+### 2. disable-workflows: tool Workflow
+
+- **Status:** UNVERIFIED: documented at https://code.claude.com/docs/en/settings-reference
+- **Saving, user scope** (every decomposed session carrying it): ≈200 tokens per call over 3 sessions (15 calls) · 3.0% of main token-turns.
+- **Saving, project scope** (Local snippet, one per project; 1 project never called it): ≈200 tokens per call over 3 sessions (15 calls) · 3.0% of main token-turns.
+- **Usage:** called in 0 of 10 sessions, 0 projects, last used —.
+- **Observed presence:** Workflow last sent on 2026-09-12 (Claude Code 2.1.283); absent from the 1 most recent session with a tool snapshot (1 project). Presence reflects past launches, not current settings.
+- **Snippets:**
+  - User (`~/.claude/settings.json`): `"enableWorkflows": false`
+  - Local (`.claude/settings.local.json`, gitignored): `"enableWorkflows": false`
+- **Trade-off:** Also removes bundled workflow commands, `/workflow-authoring` and the ultracode keyword
+- **Docs:** https://code.claude.com/docs/en/settings-reference
+
+## Limitations
+
+- B is exact; every component figure is an estimate (≈) from the two-rate attribution: tool JSON at 4.5 bytes per token (band 4.0–4.8), the rest of B shared by bytes.
+- A transcript is not the wire request: the auto-mode template and wire-only reminders are invisible and end up spread over the non-tool components.
+- 0 eligible main sessions could not be decomposed (no tool snapshot or sanity guard); they still count for B and token-turns.
+- Token-turns are unweighted: cached and uncached input count the same (owner data: API-weighted pooled share 17.2% vs 17.7%; 99.4% of later calls read ≥ 0.9·B from cache).
+- MCP servers still connecting at the first call add their deferred tool names after B (≈0.4k tokens p50 in owner data).
+- Subagent baselines are measured but not decomposed.
+- Only transcripts Claude Code still keeps are measured (`cleanupPeriodDays`, default 30 days).
+- Observed tool presence reflects past launches, not current settings; levers marked UNVERIFIED are documented but not measured on the wire.
