@@ -272,6 +272,41 @@ func TestResolveRoot(t *testing.T) {
 	}
 }
 
+// TestSymlinkedRoot: a transcripts root that is itself a symlink (a ~/.claude/projects moved to
+// another disk, a dotfile manager) is scanned like its target, whether it is given with --root or
+// found as a default candidate. filepath.WalkDir alone does not descend into a symlinked root, so
+// the run used to report 0 sessions and exit 0.
+func TestSymlinkedRoot(t *testing.T) {
+	root := overheadRoot(t)
+	link := filepath.Join(t.TempDir(), "projects-link")
+	if err := os.Symlink(root, link); err != nil {
+		t.Skipf("symlinks unavailable here: %v", err)
+	}
+	for _, c := range []struct {
+		explicit   string
+		candidates []string
+	}{{link, nil}, {"", []string{link}}} {
+		dir, err := resolveRoot(c.explicit, c.candidates)
+		if err != nil {
+			t.Fatalf("resolveRoot(%q, %q): %v", c.explicit, c.candidates, err)
+		}
+		n := 0
+		if _, err := walkTranscripts(dir, &bytes.Buffer{}, func(string, *transcript.Session) { n++ }); err != nil || n != 2 {
+			t.Errorf("walk of %q (resolved from %q, %q): %d transcripts, err %v; want 2", dir, c.explicit, c.candidates, n, err)
+		}
+	}
+	for _, cmd := range []string{"overhead", "analyze"} {
+		codeReal, outReal, _ := runArgs(cmd, "--root", root, "--min-turns", "1")
+		code, out, errOut := runArgs(cmd, "--root", link, "--min-turns", "1")
+		if code != 0 || codeReal != 0 || out != outReal {
+			t.Errorf("%s via symlink: code=%d stderr=%q; report differs from the real root:\n%s", cmd, code, errOut, out)
+		}
+	}
+	if _, out, _ := runArgs("overhead", "--root", link, "--min-turns", "1"); !strings.Contains(out, "- **Sessions:** 2 scanned ·") {
+		t.Errorf("overhead via symlink does not scan the target:\n%s", out)
+	}
+}
+
 // writeLines writes a synthetic transcript, one JSON record per line.
 func writeLines(t *testing.T, path string, lines ...string) {
 	t.Helper()

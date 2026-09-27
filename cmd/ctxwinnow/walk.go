@@ -52,7 +52,8 @@ var errNotDir = errors.New("not a directory")
 
 // resolveRoot returns explicit when it is non-empty and a readable directory (an explicit root never
 // falls back), else the first candidate that is; otherwise a *rootError whose Err is the first
-// problem other than a missing path, or fs.ErrNotExist when nothing exists.
+// problem other than a missing path, or fs.ErrNotExist when nothing exists. A root that is itself a
+// symlink is returned resolved (see walkRoot).
 func resolveRoot(explicit string, candidates []string) (string, error) {
 	tried := candidates
 	if explicit != "" {
@@ -62,7 +63,10 @@ func resolveRoot(explicit string, candidates []string) (string, error) {
 	for _, p := range tried {
 		err := readableDir(p)
 		if err == nil {
-			return p, nil
+			var dir string
+			if dir, err = walkRoot(p); err == nil {
+				return dir, nil
+			}
 		}
 		if problem == nil && !errors.Is(err, fs.ErrNotExist) {
 			problem = err
@@ -88,6 +92,21 @@ func readableDir(p string) error {
 		return err
 	}
 	return f.Close()
+}
+
+// walkRoot returns the readable directory p in a form filepath.WalkDir descends into. WalkDir
+// Lstats its root and does not follow a symlink there, so a symlinked ~/.claude/projects would scan
+// nothing: when the last element of p is not itself a directory, p is resolved with
+// filepath.EvalSymlinks. Any other root is returned unchanged, so warnings keep the path as given.
+func walkRoot(p string) (string, error) {
+	fi, err := os.Lstat(p)
+	if err != nil {
+		return "", err
+	}
+	if fi.IsDir() {
+		return p, nil
+	}
+	return filepath.EvalSymlinks(p)
 }
 
 // walkTranscripts calls visit for every *.jsonl under root in lexical order (rel = path relative to
