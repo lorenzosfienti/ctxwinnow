@@ -3,3 +3,4 @@ reports/
 *.test
 *.out
 docs/superpowers/
+dist/

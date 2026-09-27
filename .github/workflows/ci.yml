@@ -2,15 +2,41 @@ name: ci
 on:
   push:
   pull_request:
+defaults:
+  run:
+    shell: bash
 jobs:
   test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        go: [go.mod, stable]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        if: matrix.go == 'go.mod'
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-go@v5
+        if: matrix.go == 'stable'
+        with:
+          go-version: stable
+      - name: gofmt
+        if: matrix.os == 'ubuntu-latest'
+        run: test -z "$(gofmt -l .)"
+      - run: go vet ./...
+      - run: go test ./...
+  changelog:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: gofmt
-        run: test -z "$(gofmt -l .)"
-      - run: go vet ./...
-      - run: go test ./...
+      - name: CHANGELOG.md has a heading for the current version
+        run: |
+          V=$(go run ./cmd/ctxwinnow --version | cut -d' ' -f2)
+          grep -q "^## \[$V\] - " CHANGELOG.md || { echo "CHANGELOG.md has no '## [$V] - ' heading" >&2; exit 1; }

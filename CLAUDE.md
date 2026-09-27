@@ -1,43 +1,62 @@
 # ctxwinnow
 
-Go tool that compresses tool output before it reaches the LLM. Like headroom, but lossless-first, no ML, a single
-binary, and every cut is explained. Portfolio project.
+Offline, read-only auditor of what Claude Code sends on every call. `ctxwinnow overhead` measures the fixed
+per-call context baseline B from the user's own transcripts, estimates what it is made of, ranks what is paid for
+and never used, suggests catalogued config levers, and proves a change with `--compare`. Single Go binary,
+standard library only. Portfolio project.
 
 ## Status
 
-- v0.1.0: step 0 (`ctxwinnow analyze`) shipped. Real-data verdict on 2026-09-26: RETHINK (median 0.0%).
-- Next: the engine, only if step 0 reports GO; then the Anthropic proxy.
+- v0.2.0 (committed locally, not tagged or pushed): `ctxwinnow overhead` with levers and `--compare`; `analyze`
+  calibration fix; CI matrix; tag-driven release workflow.
+- v0.1.0: step 0 (`ctxwinnow analyze`), verdict RETHINK on 2026-09-26 (median compressible share 0.0%). The
+  compression engine and proxy are dropped.
+- Next (owner): live acceptance on `~/.claude/projects`, then the `--compare` acceptance after the Artifact change;
+  only then create the public repo and push `v0.1.0` and `v0.2.0` together.
 
 ## Commands
 
-`go test ./...` · `gofmt -l .` (must print nothing) · `go vet ./...`
+`go test ./...` · `gofmt -l .` (must print nothing) · `go vet ./...` · golden files:
+`go test ./internal/overhead/ -run Golden -update`, `go test ./internal/ceiling/ -run Golden -update`,
+`go test ./cmd/ctxwinnow/ -run TestMissingRoot -update` (review every diff).
 
 ## Layout
 
-- `internal/policy/`: `Policy`, the compression gate by tool name and Bash command (moved from `compress/` in 0.2).
-- `internal/transcript/`: Claude Code transcript reader.
-- `internal/ceiling/`: step 0 analysis and markdown report.
-- `cmd/ctxwinnow/`: the CLI.
+- `internal/transcript/`: the only transcript parser; streams each JSONL file once, measures content strings and
+  drops them; shared path-boundary matcher (`UnderPath`, `UnderAny`).
+- `internal/overhead/`: `overhead` — inventory (per-session B and attribution), aggregate, levers, compare,
+  redact, report.
+- `internal/ceiling/`: `analyze` (step 0) and its report.
+- `internal/policy/`: the step-0 compression gate (`Policy`, `BashHead`), kept for `analyze`.
+- `internal/version/`: the single version source.
+- `cmd/ctxwinnow/`: CLI (`overhead`, `analyze`, `--version`, help), root resolution and the fault-tolerant walker.
 
 ## Rules
 
-- Standard library only.
+- Standard library only; nothing newer than Go 1.26 (`go.mod` says `go 1.26.0`; `go vet` checks it).
 - The version lives only in `internal/version.Version`. Bump it together with `CHANGELOG.md`, and never leave
-  entries under `[Unreleased]`.
-- No real transcripts or reports in the repo: `reports/` is gitignored and fixtures are synthetic.
+  entries under `[Unreleased]` (a test and CI enforce the match).
+- Releases: tag `vX.Y.Z` equal to `internal/version.Version` with a `## [X.Y.Z] - YYYY-MM-DD` heading; the release
+  workflow builds the archives. Never move or delete a pushed tag (the Go proxy and checksum database keep the
+  first content): fix forward with a patch release.
+- No real transcripts or reports in the repo: `reports/` and `dist/` are gitignored and fixtures are synthetic.
 - Docs stay minimal: README, CHANGELOG and this file. `docs/superpowers/` holds local specs and plans and is
   gitignored on purpose.
 - Commits use conventional messages and carry no AI attribution.
 
 ## Design decisions that must survive
 
-- Compress only `Bash` and `mcp__*` output. Read, Grep, Edit and every other tool pass through by name. Bash
-  reads, searches and failed commands pass through too, because Edit anchors must stay byte-exact.
-- Lossless first: strip ANSI and `\r` redraws, compact JSON, fold duplicate lines. Cut content only if the output
-  is still over budget. The only kinds are `json` and `lines`; prose and code are never cut.
-- Proxy (later): compress only the tool_results in the newest message, and replay every earlier one byte for byte
-  by `tool_use_id`. Never touch `system`, `tools` or `cache_control`: an edited prefix is an HTTP 400 on Opus 5.5
-  and on accounts created on or after 2026-08-31.
-- Every cut is logged. Markers give exact counts and the path of the spilled original.
-- headroom is already query-aware (BM25), so query-awareness is not a differentiator. BM25 stays optional unless
-  the benchmark justifies it.
+- B is the context of the first usage (input + cache read + cache creation): exact. Usages are de-duplicated per
+  message id (last line wins), context-0 usages dropped, and ids seen in an earlier file dropped (continuations).
+- Components are estimates (≈) from a two-rate attribution: tool JSON at `toolJSONBytesPerToken` = 4.5 (band
+  4.0–4.8, gate 0), the rest of B shared by bytes so components sum to B; sanity guard [2, 6] bytes per token.
+  Tool bytes are the raw JSON length as stored, never re-marshalled.
+- Privacy: read transcripts only, no settings files, no network; never store or print contents. `--redact` is an
+  allowlist with per-run labels (no hashes); unknown names are redacted.
+- Levers: explicit catalog targets only ("no known safe lever" otherwise); snippets in User, Local, Env or Flag
+  scope, never a shared Project scope; printed only at ≥ 0.5% of main token-turns; never a total across levers;
+  presence reflects past launches and is never reported as "applied".
+- `--compare`: the paired per-project delta is primary; the unpaired delta carries a deterministic noise floor
+  (fixed-seed `math/rand/v2`); empty or one-session sides print "n/a", never NaN.
+- Percentiles are nearest-rank; timestamps are compared as instants; paths are printed as written, never cleaned,
+  and golden files are LF (`.gitattributes`) so they match on every OS.

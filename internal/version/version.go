@@ -2,4 +2,4 @@
 package version
 
 // Version is the ctxwinnow release version. Bump it together with CHANGELOG.md.
-const Version = "0.1.0"
+const Version = "0.2.0"

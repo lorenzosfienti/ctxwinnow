@@ -6,6 +6,46 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-27
+
+### Added
+- `ctxwinnow overhead`: offline, read-only audit of the fixed per-call context baseline B of Claude
+  Code sessions. B is exact (first-call usage); the report gives the pooled and typical-session
+  token-turns share, a subagent row, an estimated component breakdown (tool JSON at 4.5 bytes per
+  token, the rest of B shared by bytes), the cost of tools carried but never called, and skill
+  listing, MCP and instruction-file tables.
+- Suggested levers from a static catalog (Artifact, SendFeedback, Workflow, skill visibility,
+  instruction files, MCP), each marked VERIFIED or UNVERIFIED, with user- and project-scope savings
+  from the user's own sessions, usage, observed presence and copy-paste snippets for User, Local,
+  Env or Flag scope (never a shared Project scope). Only levers worth at least 0.5% of main
+  token-turns are printed, and savings are never added up.
+- `--compare T`: before/after report with a paired per-project delta, an unpaired delta with a
+  deterministic noise floor, removed and appeared components with predicted tokens, tool drift
+  warnings and the counterfactual saving.
+- `--since` / `--until` (`YYYY-MM-DD` or RFC 3339), `--min-turns`, `--only`, `--exclude`,
+  `--redact` (allowlist redaction with per-run labels, no hashes) and `-o`.
+- `-h`, `--help` and `help` print the usage and exit 0.
+- Release workflow: a `vX.Y.Z` tag builds archives for macOS, Linux and Windows (amd64, arm64)
+  with `SHA256SUMS` and publishes the CHANGELOG section as release notes.
+- CI matrix: Ubuntu, macOS and Windows × the `go.mod` Go version and the latest stable; on `main`
+  CI also checks that CHANGELOG.md has a heading for the current version.
+
+### Changed
+- `compress/` moved to `internal/policy/` (it was never a public API).
+- The transcript reader also extracts size-only records (tool snapshot bytes, component attachments
+  before the first call, tool and skill usage); contents are measured and dropped, never stored.
+- Both commands find transcripts in `$CLAUDE_CONFIG_DIR/projects`, then `~/.claude/projects`; a
+  missing root lists every path tried and exits 1; unreadable or vanished files are skipped,
+  warned on stderr and counted instead of failing the run.
+- `go.mod` targets Go 1.26 (`go 1.26.0`); `.gitattributes` keeps LF line endings so golden files
+  match on every OS.
+
+### Fixed
+- `ctxwinnow analyze` token estimates are calibrated ×1.75 (`contentTokensPerEstimate`, the median
+  ratio against exact usage); the report states it.
+- `--only`, `--exclude` and `--group` match at path boundaries: `/Users/a/app` no longer matches
+  `/Users/a/app-legacy`.
+
 ## [0.1.0] - 2026-09-26
 
 ### Added
