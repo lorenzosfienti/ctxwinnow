@@ -85,9 +85,10 @@ func Render(w io.Writer, r Result) error {
 	topTable(&b, o.MCP)
 
 	p("\n## Limitations\n\n")
-	p("- Tokens are estimated as bytes/4. Category shares compare estimates with estimates and do not depend on " +
-		"the constant; the context-impact share divides an estimate by real token counts, so it scales with the " +
-		"constant (about 33%% low if the true ratio is 3 bytes per token).\n")
+	p("- Tokens are estimated as bytes/4 × %v (`contentTokensPerEstimate`, the median ratio measured against exact "+
+		"usage), so estimates are calibrated. Category shares compare estimates with estimates and do not depend on "+
+		"the constant; the context-impact share divides an estimate by real token counts, so it scales with the "+
+		"constant. The `small` category (< 1000) is decided on the uncalibrated bytes/4 estimate.\n", contentTokensPerEstimate)
 	p("- Transcripts are what Claude Code stores, not the exact requests sent to the API.\n")
 	p("- Only the history Claude Code keeps (30 days by default) is analysed.\n")
 	p("- The policy is conservative: a Bash command that reads or searches anywhere passes through entirely.\n")

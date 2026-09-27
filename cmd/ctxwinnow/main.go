@@ -50,9 +50,9 @@ func analyze(args []string, stdout, stderr io.Writer) int {
 	home, _ := os.UserHomeDir()
 	root := flags.String("root", filepath.Join(home, ".claude", "projects"), "directory scanned recursively for *.jsonl")
 	var only, exclude, groups multiFlag
-	flags.Var(&only, "only", "keep only sessions whose cwd starts with PREFIX (repeatable)")
-	flags.Var(&exclude, "exclude", "drop sessions whose cwd starts with PREFIX (repeatable)")
-	flags.Var(&groups, "group", "report group LABEL=PREFIX (repeatable, first match wins)")
+	flags.Var(&only, "only", "keep only sessions whose cwd is PREFIX or lies under it (repeatable)")
+	flags.Var(&exclude, "exclude", "drop sessions whose cwd is PREFIX or lies under it (repeatable)")
+	flags.Var(&groups, "group", "report group LABEL=PREFIX: sessions whose cwd is PREFIX or lies under it (repeatable, first match wins)")
 	minTurns := flags.Int("min-turns", 20, "minimum assistant messages for a session to count in the median")
 	out := flags.String("o", "", "write the report to FILE instead of stdout")
 	if err := flags.Parse(args); err != nil {

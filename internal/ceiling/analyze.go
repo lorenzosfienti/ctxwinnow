@@ -3,13 +3,19 @@ package ceiling
 import (
 	"math"
 	"slices"
-	"strings"
 
 	"github.com/lorenzosfienti/ctxwinnow/internal/policy"
 	"github.com/lorenzosfienti/ctxwinnow/internal/transcript"
 )
 
-// Group labels sessions whose working directory starts with Prefix.
+// contentTokensPerEstimate converts (len+3)/4 estimates of transcript text into tokens: the median
+// ratio measured against exact usage (context-composition study). Printed in the report.
+const contentTokensPerEstimate = 1.75
+
+// calibrate returns int(math.Round(float64(est) * contentTokensPerEstimate)).
+func calibrate(est int) int { return int(math.Round(float64(est) * contentTokensPerEstimate)) }
+
+// Group labels sessions whose working directory is Prefix or lies under it.
 type Group struct{ Label, Prefix string }
 
 // Options configures an Analyzer (the flags of `ctxwinnow analyze`).
@@ -134,9 +140,9 @@ func (a *Analyzer) AddSession(s *transcript.Session, subagent bool) {
 		case transcript.EvToolResult:
 			r := ev.Result
 			cat := Classify(r)
-			tok, saved := EstTokens(r.Text), 0
+			tok, saved := calibrate(EstTokens(r.Text)), 0
 			if cat.Compressible() {
-				saved = LosslessSaved(cat, r.Text)
+				saved = calibrate(LosslessSaved(cat, r.Text))
 				runC += tok
 				runL += saved
 			}
@@ -191,10 +197,10 @@ func bump(m map[string]*CatStat, key string, tok int) {
 }
 
 func (a *Analyzer) keep(cwd string) bool {
-	if len(a.opt.Only) > 0 && !hasAnyPrefix(cwd, a.opt.Only) {
+	if len(a.opt.Only) > 0 && !transcript.UnderAny(cwd, a.opt.Only) {
 		return false
 	}
-	return !hasAnyPrefix(cwd, a.opt.Exclude)
+	return !transcript.UnderAny(cwd, a.opt.Exclude)
 }
 
 func (a *Analyzer) groupOf(cwd string) *GroupStats {
@@ -202,20 +208,11 @@ func (a *Analyzer) groupOf(cwd string) *GroupStats {
 		return nil
 	}
 	for _, g := range a.opt.Groups {
-		if strings.HasPrefix(cwd, g.Prefix) {
+		if transcript.UnderPath(cwd, g.Prefix) {
 			return a.byName[g.Label]
 		}
 	}
 	return a.byName[otherGroup]
-}
-
-func hasAnyPrefix(s string, prefixes []string) bool {
-	for _, p := range prefixes {
-		if strings.HasPrefix(s, p) {
-			return true
-		}
-	}
-	return false
 }
 
 // Percentile returns the nearest-rank p-quantile (0 < p ≤ 1) of xs, or 0 for no data.

@@ -4,7 +4,7 @@ ctxwinnow test · transcripts 2026-09-01 … 2026-09-02
 
 ## Verdict
 
-**GO** — median share of peak context taken by compressible tool output: **10.0%** over 1 sessions with ≥ 2 turns (GO ≥ 10%, GREY 5–10%, RETHINK < 5%).
+**GO** — median share of peak context taken by compressible tool output: **17.5%** over 1 sessions with ≥ 2 turns (GO ≥ 10%, GREY 5–10%, RETHINK < 5%).
 
 ## Scan
 
@@ -18,8 +18,8 @@ Share of each session's peak context occupied by compressible tool output (sessi
 
 | Group | Sessions | Median | p75 | p90 | Lossless floor (median) | Verdict |
 |---|---:|---:|---:|---:|---:|---|
-| all | 1 | 10.0% | 10.0% | 10.0% | 10.0% | GO |
-| work | 1 | 10.0% | 10.0% | 10.0% | 10.0% | GO |
+| all | 1 | 17.5% | 17.5% | 17.5% | 17.5% | GO |
+| work | 1 | 17.5% | 17.5% | 17.5% | 17.5% | GO |
 | personal | 0 | 0.0% | 0.0% | 0.0% | 0.0% | NO DATA |
 | other | 0 | 0.0% | 0.0% | 0.0% | 0.0% | NO DATA |
 
@@ -32,19 +32,19 @@ Group columns show each group's share of its own tool-output tokens.
 | Category | Compressible | Results | Est. tokens | Share | work | personal | other |
 |---|---|---:|---:|---:|---:|---:|---:|
 | non_text | no | 0 | 0 | 0.0% | 0.0% | 0.0% | 0.0% |
-| pass_tool | no | 1 | 1000 | 23.5% | 33.3% | 0.0% | 0.0% |
+| pass_tool | no | 1 | 1750 | 23.5% | 33.3% | 0.0% | 0.0% |
 | error | no | 0 | 0 | 0.0% | 0.0% | 0.0% | 0.0% |
 | bash_read | no | 0 | 0 | 0.0% | 0.0% | 0.0% | 0.0% |
 | bash_search | no | 0 | 0 | 0.0% | 0.0% | 0.0% | 0.0% |
 | unparseable | no | 0 | 0 | 0.0% | 0.0% | 0.0% | 0.0% |
 | persisted | no | 0 | 0 | 0.0% | 0.0% | 0.0% | 0.0% |
 | small | no | 0 | 0 | 0.0% | 0.0% | 0.0% | 0.0% |
-| json | yes | 1 | 1253 | 29.5% | 0.0% | 100.0% | 0.0% |
+| json | yes | 1 | 2193 | 29.5% | 0.0% | 100.0% | 0.0% |
 | uncertain | no | 0 | 0 | 0.0% | 0.0% | 0.0% | 0.0% |
-| lines | yes | 1 | 2000 | 47.0% | 66.7% | 0.0% | 0.0% |
-| **total** | | 3 | 4253 | 100.0% | 100.0% | 100.0% | 0.0% |
+| lines | yes | 1 | 3500 | 47.0% | 66.7% | 0.0% | 0.0% |
+| **total** | | 3 | 7443 | 100.0% | 100.0% | 100.0% | 0.0% |
 
-Lossless floor on compressible output: 2246 est. tokens (69.0% of compressible).
+Lossless floor on compressible output: 3931 est. tokens (69.0% of compressible).
 
 ## Top compressible sources
 
@@ -52,17 +52,17 @@ Lossless floor on compressible output: 2246 est. tokens (69.0% of compressible).
 
 | Name | Results | Est. tokens |
 |---|---:|---:|
-| go | 1 | 2000 |
+| go | 1 | 3500 |
 
 ### MCP tools
 
 | Name | Results | Est. tokens |
 |---|---:|---:|
-| mcp__x__y | 1 | 1253 |
+| mcp__x__y | 1 | 2193 |
 
 ## Limitations
 
-- Tokens are estimated as bytes/4. Category shares compare estimates with estimates and do not depend on the constant; the context-impact share divides an estimate by real token counts, so it scales with the constant (about 33% low if the true ratio is 3 bytes per token).
+- Tokens are estimated as bytes/4 × 1.75 (`contentTokensPerEstimate`, the median ratio measured against exact usage), so estimates are calibrated. Category shares compare estimates with estimates and do not depend on the constant; the context-impact share divides an estimate by real token counts, so it scales with the constant. The `small` category (< 1000) is decided on the uncalibrated bytes/4 estimate.
 - Transcripts are what Claude Code stores, not the exact requests sent to the API.
 - Only the history Claude Code keeps (30 days by default) is analysed.
 - The policy is conservative: a Bash command that reads or searches anywhere passes through entirely.
