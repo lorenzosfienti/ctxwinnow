@@ -178,6 +178,29 @@ func TestRenderRedacted(t *testing.T) {
 	}
 }
 
+// TestRenderUnusedMCPOrdinal: an MCP row before a custom (non-built-in) tool row in the unused table
+// must not consume a tool-N ordinal, so the custom tool keeps tool-1 (regression for a discarded
+// red.Name(ClassTool, ...) call that ran for MCP rows too).
+func TestRenderUnusedMCPOrdinal(t *testing.T) {
+	s := &Summary{
+		Decomposed:     []*Session{{}},
+		MainTokenTurns: 1000,
+		Unused: []UnusedRow{
+			{Name: "zzsrv", MCP: true, TokenTurns: 500},
+			{Name: "zzcustom", TokenTurns: 100},
+		},
+	}
+	var b strings.Builder
+	renderUnused(&b, s, NewRedactor(true))
+	out := b.String()
+	if !strings.Contains(out, "| tool-1 |") {
+		t.Errorf("custom tool after an MCP row must be tool-1:\n%s", out)
+	}
+	if strings.Contains(out, "tool-2") {
+		t.Errorf("MCP row must not consume a tool-N ordinal:\n%s", out)
+	}
+}
+
 func TestComponentName(t *testing.T) {
 	off, on := NewRedactor(false), NewRedactor(true)
 	for _, c := range []struct {

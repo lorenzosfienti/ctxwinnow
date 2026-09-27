@@ -179,9 +179,11 @@ func renderUnused(b *strings.Builder, s *Summary, red *Redactor) {
 		p("|---|---:|---:|---:|---|---:|---:|---:|\n")
 		mcp := false
 		for _, row := range s.Unused {
-			name := red.Name(ClassTool, row.Name)
+			var name string
 			if row.MCP {
 				name, mcp = componentName(CompMCPTool, row.Name, red)+" †", true
+			} else {
+				name = red.Name(ClassTool, row.Name)
 			}
 			p("| %s | %s | %s | %s | %s | %s | %s | %s |\n", mdEscape(name), fmtInt(row.Carrying), fmtInt(row.Calling),
 				fmtInt(row.Projects), fmtDay(row.LastCall), fmtTok(row.MedianTokens), fmtTok(row.TokenTurns), fmtPct(row.Share))
