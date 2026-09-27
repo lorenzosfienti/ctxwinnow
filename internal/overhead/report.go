@@ -545,14 +545,14 @@ func jsonString(s string) string {
 	return strings.TrimSuffix(b.String(), "\n")
 }
 
-// scopeLabel: "User (`~/.claude/settings.json`)", "Local (`.claude/settings.local.json`, gitignored)",
+// scopeLabel: "User (`~/.claude/settings.json`)", "Local (`.claude/settings.local.json`, keep it gitignored)",
 // "Env", "Flag"; the settings paths go through red.Name(ClassPath, …).
 func scopeLabel(sc Scope, red *Redactor) string {
 	switch sc {
 	case ScopeUser:
 		return "User (`" + red.Name(ClassPath, "~/.claude/settings.json") + "`)"
 	case ScopeLocal:
-		return "Local (`" + red.Name(ClassPath, ".claude/settings.local.json") + "`, gitignored)"
+		return "Local (`" + red.Name(ClassPath, ".claude/settings.local.json") + "`, keep it gitignored)"
 	}
 	return string(sc)
 }

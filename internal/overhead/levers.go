@@ -22,7 +22,7 @@ type Scope string
 
 const (
 	ScopeUser  Scope = "User"  // ~/.claude/settings.json
-	ScopeLocal Scope = "Local" // .claude/settings.local.json (gitignored)
+	ScopeLocal Scope = "Local" // .claude/settings.local.json (keep it gitignored)
 	ScopeEnv   Scope = "Env"
 	ScopeFlag  Scope = "Flag"
 )

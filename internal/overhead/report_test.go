@@ -199,7 +199,7 @@ func TestRenderRedacted(t *testing.T) {
 		t.Errorf("redacted report leaks a synthetic name or path:\n%s", out)
 	}
 	for _, want := range []string{"| Artifact |", "| file-1 (Project) | Project |", "MCP tools of mcp-", "servers carried: mcp-",
-		"### 1. instructions: file-1 (Project)\n", "- Local (`<path>`, gitignored): `\"claudeMdExcludes\": [\"<path of file-1>\"]`\n",
+		"### 1. instructions: file-1 (Project)\n", "- Local (`<path>`, keep it gitignored): `\"claudeMdExcludes\": [\"<path of file-1>\"]`\n",
 		"- User (`<path>`): `\"enableArtifact\": false`"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("redacted report lacks %q:\n%s", want, out)
@@ -327,14 +327,14 @@ func TestRenderLevers(t *testing.T) {
 	}
 	for _, want := range []string{
 		"- **Action:** exclude: a Project file above the project directory of every session that loaded it; exclude it there with the Local snippet.\n",
-		"- Local (`.claude/settings.local.json`, gitignored): `\"claudeMdExcludes\": [\"/home/zzuser/work/CLAUDE.md\"]`\n",
+		"- Local (`.claude/settings.local.json`, keep it gitignored): `\"claudeMdExcludes\": [\"/home/zzuser/work/CLAUDE.md\"]`\n",
 		"- **Saving, user scope** (every decomposed session carrying it): ≈788 tokens per call over 3 sessions (15 calls) · 11.7% of main token-turns.\n",
 		"- **Saving, project scope** (Local snippet, one per project; 2 projects never called it): ≈788 tokens per call over 3 sessions (15 calls) · 11.7% of main token-turns.\n",
 		"- **Saving, project scope** (Local snippet, one per project; 1 project loaded it): ≈3.1k tokens per call over 1 session (6 calls) · 18.6% of main token-turns.\n",
 		"- **Usage:** called in 0 of 5 sessions, 0 projects, last used —.\n",
 		"- **Observed presence:** Artifact last sent on 2026-09-22 (Claude Code 2.1.283); absent from the 1 most recent session with a tool snapshot (1 project). Presence reflects past launches, not current settings.\n",
 		"- User (`~/.claude/settings.json`): `\"enableArtifact\": false` — no other settings file can re-enable it; delete this line to undo.\n",
-		"- Local (`.claude/settings.local.json`, gitignored): `\"enableArtifact\": false` — no other settings file can re-enable it; delete this line to undo.\n",
+		"- Local (`.claude/settings.local.json`, keep it gitignored): `\"enableArtifact\": false` — no other settings file can re-enable it; delete this line to undo.\n",
 		"- Env: `CLAUDE_CODE_DISABLE_ARTIFACT=1 claude`\n",
 		"- Flag: `claude --disallowedTools Artifact`\n",
 		"- **Usage:** called in 1 of 5 sessions, 1 project, last used 2026-09-22. You do use this tool: disabling it takes it away from those sessions too.\n",
@@ -379,7 +379,7 @@ func TestRenderLeverActions(t *testing.T) {
 	for _, want := range []string{
 		"- **Action:** trim: a User file or a Project file inside the session's project; no settings lever, shorten it by hand.\n",
 		"- **Action:** prune: an auto-memory file; prune it by hand, or turn auto memory off locally (heavier).\n",
-		"- Local (`.claude/settings.local.json`, gitignored): `\"autoMemoryEnabled\": false`\n",
+		"- Local (`.claude/settings.local.json`, keep it gitignored): `\"autoMemoryEnabled\": false`\n",
 		"- User (`~/.claude/settings.json`): `\"skillOverrides\": {\"zzbig\": \"user-invocable-only\"}`\n",
 		"- **Snippets:** none (trim the file by hand).\n",
 	} {
@@ -425,7 +425,7 @@ func TestScopeLabel(t *testing.T) {
 		off, on string
 	}{
 		{ScopeUser, "User (`~/.claude/settings.json`)", "User (`<path>`)"},
-		{ScopeLocal, "Local (`.claude/settings.local.json`, gitignored)", "Local (`<path>`, gitignored)"},
+		{ScopeLocal, "Local (`.claude/settings.local.json`, keep it gitignored)", "Local (`<path>`, keep it gitignored)"},
 		{ScopeEnv, "Env", "Env"},
 		{ScopeFlag, "Flag", "Flag"},
 	} {

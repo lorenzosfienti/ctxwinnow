@@ -103,7 +103,7 @@ Catalogued levers whose user-scope saving reaches 0.5% of main token-turns (`Min
 - **Observed presence:** Artifact last sent on 2026-09-06 (Claude Code 2.1.283); absent from the 4 most recent sessions with a tool snapshot (3 projects). Presence reflects past launches, not current settings.
 - **Snippets:**
   - User (`~/.claude/settings.json`): `"enableArtifact": false` — no other settings file can re-enable it; delete this line to undo.
-  - Local (`.claude/settings.local.json`, gitignored): `"enableArtifact": false` — no other settings file can re-enable it; delete this line to undo.
+  - Local (`.claude/settings.local.json`, keep it gitignored): `"enableArtifact": false` — no other settings file can re-enable it; delete this line to undo.
   - Env: `CLAUDE_CODE_DISABLE_ARTIFACT=1 claude`
   - Flag: `claude --disallowedTools Artifact`
 - **Trade-off:** Claude can no longer publish pages; off wins everywhere (Local/Project honoured from 2.1.242)
@@ -118,7 +118,7 @@ Catalogued levers whose user-scope saving reaches 0.5% of main token-turns (`Min
 - **Observed presence:** Workflow last sent on 2026-09-12 (Claude Code 2.1.283); absent from the 1 most recent session with a tool snapshot (1 project). Presence reflects past launches, not current settings.
 - **Snippets:**
   - User (`~/.claude/settings.json`): `"enableWorkflows": false`
-  - Local (`.claude/settings.local.json`, gitignored): `"enableWorkflows": false`
+  - Local (`.claude/settings.local.json`, keep it gitignored): `"enableWorkflows": false`
 - **Trade-off:** Also removes bundled workflow commands, `/workflow-authoring` and the ultracode keyword
 - **Docs:** https://code.claude.com/docs/en/settings-reference
 

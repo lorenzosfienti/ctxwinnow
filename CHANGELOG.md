@@ -51,6 +51,8 @@ All notable changes to this project are documented here. The format follows
   cause after the paths tried instead of only "no transcripts directory found".
 - The `overhead` Limitations section labels its fixed figures (API-weighted share, cache reads, pending
   MCP names) as measured on the author's sessions; "owner data" read as the reader's own data.
+- Local snippets say "keep it gitignored": Claude Code gitignores `.claude/settings.local.json` only
+  when it creates the file, and a committed copy would apply to every collaborator.
 
 ## [0.1.0] - 2026-09-26
 
