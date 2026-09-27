@@ -60,7 +60,8 @@ ctxwinnow overhead --compare 2026-09-27T14:00:00Z          # before/after a sett
 ### Measuring a change
 
 1. Apply the change, for example `"enableArtifact": false` in `~/.claude/settings.json`, and note the time.
-2. Keep working until at least 20 new sessions exist (the report still prints with fewer, with a warning).
+2. Keep working until at least 20 new eligible sessions exist, each with at least `--min-turns` calls (the report
+   still prints with fewer, with a warning).
 3. Run `ctxwinnow overhead --compare <that time>`. The primary figure is the paired delta: per project, median B
    after minus median B before, then the median over projects. The unpaired delta comes with a noise floor:
    differences smaller than it are indistinguishable from session mix.
@@ -77,7 +78,7 @@ project paths.
 
 `--redact` makes the report shareable: built-in tool names and a short list of bundled skills stay readable;
 every other tool becomes `tool-N`, MCP tools and servers `mcp-N`, skills `skill-N`, instruction files
-`file-N (User|Project|AutoMem)`, projects `project-A`, and settings paths in snippets a placeholder. Labels are
+`file-N (User|Project|AutoMem|other)`, projects `project-A`, and settings paths in snippets a placeholder. Labels are
 per run (no hashes), and an unknown name is always redacted. `ctxwinnow analyze` has no redaction: its report prints
 script basenames.
 

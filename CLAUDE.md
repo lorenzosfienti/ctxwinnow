@@ -11,8 +11,8 @@ standard library only. Portfolio project.
   calibration fix; CI matrix; tag-driven release workflow.
 - v0.1.0: step 0 (`ctxwinnow analyze`), verdict RETHINK on 2026-09-26 (median compressible share 0.0%). The
   compression engine and proxy are dropped.
-- Next (owner): live acceptance on `~/.claude/projects`, then the `--compare` acceptance after the Artifact change;
-  only then create the public repo and push `v0.1.0` and `v0.2.0` together.
+- Next (owner): the `--compare` acceptance after the Artifact change (the live acceptance on `~/.claude/projects`
+  passed); only then create the public repo and push `v0.1.0` and `v0.2.0` together.
 
 ## Commands
 
