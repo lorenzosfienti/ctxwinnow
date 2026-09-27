@@ -1,0 +1,25 @@
+# ctxwinnow overhead — fixed per-call context report
+
+ctxwinnow test · sessions whose first timestamp is in [open, open) · min turns 20
+
+- **Sessions:** 0 scanned · 0 eligible main · 0 eligible subagent · 0 main decomposed.
+- **Excluded:** 0 too few turns · 0 no usage · 0 filtered · 0 fork (inherits parent context) · 0 continuation.
+- **Not decomposed** (eligible main): 0 no tool snapshot (0 pre-2.1.259, 0 other) · 0 sanity guard.
+- **Input:** 0 files skipped · 0 malformed lines · 0 sessions compacted before the first call.
+- **Oldest session:** —. Claude Code keeps transcripts `cleanupPeriodDays` days (default 30); deleted sessions cannot be measured.
+- **Entrypoints** (eligible main): none.
+- **Claude Code versions** (eligible): unknown.
+- **Attribution:** tool JSON at 4.5 bytes per token (`toolJSONBytesPerToken`, band 4.0–4.8); the other components share the rest of B by bytes (median remainder rate: n/a). B is exact; component figures are estimates (≈).
+
+**Not enough data:** no main session has at least 20 calls with token usage inside the window and filters. Lower `--min-turns`, widen `--since`/`--until` or check `--only`/`--exclude`.
+
+## Limitations
+
+- B is exact; every component figure is an estimate (≈) from the two-rate attribution: tool JSON at 4.5 bytes per token (band 4.0–4.8), the rest of B shared by bytes.
+- A transcript is not the wire request: the auto-mode template and wire-only reminders are invisible and end up spread over the non-tool components.
+- 0 eligible main sessions could not be decomposed (no tool snapshot or sanity guard); they still count for B and token-turns.
+- Token-turns are unweighted: cached and uncached input count the same (owner data: API-weighted pooled share 17.2% vs 17.7%; 99.4% of later calls read ≥ 0.9·B from cache).
+- MCP servers still connecting at the first call add their deferred tool names after B (≈0.4k tokens p50 in owner data).
+- Subagent baselines are measured but not decomposed.
+- Only transcripts Claude Code still keeps are measured (`cleanupPeriodDays`, default 30 days).
+- Observed tool presence reflects past launches, not current settings; levers marked UNVERIFIED are documented but not measured on the wire.

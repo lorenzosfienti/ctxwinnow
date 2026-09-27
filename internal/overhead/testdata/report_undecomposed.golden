@@ -1,0 +1,50 @@
+# ctxwinnow overhead — fixed per-call context report
+
+ctxwinnow test · sessions whose first timestamp is in [open, open) · min turns 3
+
+- **Sessions:** 2 scanned · 2 eligible main · 0 eligible subagent · 0 main decomposed.
+- **Excluded:** 0 too few turns · 0 no usage · 0 filtered · 0 fork (inherits parent context) · 0 continuation.
+- **Not decomposed** (eligible main): 2 no tool snapshot (1 pre-2.1.259, 1 other) · 0 sanity guard.
+- **Input:** 0 files skipped · 0 malformed lines · 0 sessions compacted before the first call.
+- **Oldest session:** 2026-09-01. Claude Code keeps transcripts `cleanupPeriodDays` days (default 30); deleted sessions cannot be measured.
+- **Entrypoints** (eligible main): cli 2.
+- **Claude Code versions** (eligible): 2.1.250–2.1.283.
+- **Attribution:** tool JSON at 4.5 bytes per token (`toolJSONBytesPerToken`, band 4.0–4.8); the other components share the rest of B by bytes (median remainder rate: n/a). B is exact; component figures are estimates (≈).
+
+> component breakdown needs Claude Code ≥ 2.1.259 — 2 sessions are older or lack a tool snapshot
+
+## Baseline
+
+B is the context of a session's first call (input + cache read + cache creation): exact. Every call re-reads it, so its token-turns share is B × N / Σ context over the session's N calls.
+
+**Pooled share (headline): 97.6%** of all input read by the 2 eligible main sessions is the fixed baseline. Typical session: 97.6% (median of per-session shares, median N = 3; this mostly reflects session length).
+
+| Sessions | n | B p50 | B p90 | Pooled share | Typical session | Median N |
+|---|---:|---:|---:|---:|---:|---:|
+| main | 2 | 4,000 | — | 97.6% | 97.6% | 3 |
+| subagent (fixed overhead + task prompt) | 0 | — | — | — | — | — |
+
+B p90 is printed only from 10 sessions.
+
+## What the baseline is made of
+
+_No eligible main session could be decomposed; see the counts above._
+
+## Paid for but unused
+
+_Needs decomposed sessions._
+
+## Instruction files
+
+_Needs decomposed sessions._
+
+## Limitations
+
+- B is exact; every component figure is an estimate (≈) from the two-rate attribution: tool JSON at 4.5 bytes per token (band 4.0–4.8), the rest of B shared by bytes.
+- A transcript is not the wire request: the auto-mode template and wire-only reminders are invisible and end up spread over the non-tool components.
+- 2 eligible main sessions could not be decomposed (no tool snapshot or sanity guard); they still count for B and token-turns.
+- Token-turns are unweighted: cached and uncached input count the same (owner data: API-weighted pooled share 17.2% vs 17.7%; 99.4% of later calls read ≥ 0.9·B from cache).
+- MCP servers still connecting at the first call add their deferred tool names after B (≈0.4k tokens p50 in owner data).
+- Subagent baselines are measured but not decomposed.
+- Only transcripts Claude Code still keeps are measured (`cleanupPeriodDays`, default 30 days).
+- Observed tool presence reflects past launches, not current settings; levers marked UNVERIFIED are documented but not measured on the wire.
