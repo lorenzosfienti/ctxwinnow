@@ -2,6 +2,9 @@ package main
 
 import (
 	"bytes"
+	"errors"
+	"flag"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +12,8 @@ import (
 
 	"github.com/lorenzosfienti/ctxwinnow/internal/version"
 )
+
+var update = flag.Bool("update", false, "rewrite testdata/*.golden")
 
 func runArgs(args ...string) (code int, stdout, stderr string) {
 	var o, e bytes.Buffer
@@ -46,10 +51,66 @@ func TestOutputFile(t *testing.T) {
 	}
 }
 
+// TestMissingRoot: with neither $CLAUDE_CONFIG_DIR/projects nor ~/.claude/projects present, both
+// commands exit 1 and print every path tried and the --root hint (testdata/missing_root.golden, the
+// temp dir replaced by <TMP> and separators normalised to "/"); the error is matched with
+// errors.Is(err, fs.ErrNotExist), never on OS message text.
 func TestMissingRoot(t *testing.T) {
-	code, out, errOut := runArgs("analyze", "--root", filepath.Join(t.TempDir(), "nope"))
-	if code != 1 || out != "" || !strings.Contains(errOut, "no such file or directory") {
-		t.Fatalf("code=%d out=%q stderr=%q", code, out, errOut)
+	tmp := t.TempDir()
+	t.Setenv("CLAUDE_CONFIG_DIR", filepath.Join(tmp, "cfg"))
+	t.Setenv("HOME", filepath.Join(tmp, "home"))
+	t.Setenv("USERPROFILE", filepath.Join(tmp, "home"))
+	_, err := resolveRoot("", defaultRoots(os.Getenv, os.UserHomeDir))
+	if !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("resolveRoot error %v is not fs.ErrNotExist", err)
+	}
+	for _, cmd := range []string{"overhead", "analyze"} {
+		code, out, errOut := runArgs(cmd)
+		if code != 1 || out != "" {
+			t.Fatalf("%s: code=%d stdout=%q, want 1 and no report", cmd, code, out)
+		}
+		got := strings.ReplaceAll(filepath.ToSlash(errOut), filepath.ToSlash(tmp), "<TMP>")
+		goldenFile(t, "missing_root.golden", got)
+	}
+	code, _, errOut := runArgs("overhead", "--root", filepath.Join(tmp, "nope"))
+	if code != 1 || !strings.Contains(errOut, "tried:\n  "+filepath.Join(tmp, "nope")+"\n") {
+		t.Errorf("explicit --root: code=%d stderr=%q", code, errOut)
+	}
+}
+
+// goldenFile compares got with testdata/name, or rewrites it with -update.
+func goldenFile(t *testing.T, name, got string) {
+	t.Helper()
+	path := filepath.Join("testdata", name)
+	if *update {
+		if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != string(want) {
+		t.Errorf("output differs from %s (run go test ./cmd/ctxwinnow/ -run TestMissingRoot -update and review the diff)\n%s", path, got)
+	}
+}
+
+// TestHelp: -h, --help and help print the usage on stdout and exit 0.
+func TestHelp(t *testing.T) {
+	for _, arg := range []string{"-h", "--help", "help"} {
+		code, out, errOut := runArgs(arg)
+		if code != 0 || errOut != "" || out != usage {
+			t.Errorf("%s: code=%d stdout=%q stderr=%q", arg, code, out, errOut)
+		}
+	}
+	for _, want := range []string{"ctxwinnow overhead [--root DIR]", "ctxwinnow analyze  [--root DIR]", "ctxwinnow --version | -h | --help | help"} {
+		if !strings.Contains(usage, want) {
+			t.Errorf("usage lacks %q:\n%s", want, usage)
+		}
+	}
+	if code, _, _ := runArgs("overhead", "-h"); code != 0 {
+		t.Errorf("overhead -h: code=%d, want 0", code)
 	}
 }
 
@@ -60,6 +121,7 @@ func TestUsageErrors(t *testing.T) {
 		{"analyze", "--group", "nolabel"},
 		{"analyze", "--group", "=/x"},
 		{"analyze", "--min-turns", "many"},
+		{"--frobnicate"},
 	} {
 		if code, _, _ := runArgs(args...); code != 2 {
 			t.Errorf("run(%q) = %d, want 2", args, code)

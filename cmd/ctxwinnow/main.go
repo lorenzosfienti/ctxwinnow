@@ -1,11 +1,11 @@
-// Command ctxwinnow measures (and, later, compresses) what AI coding agents read.
+// Command ctxwinnow audits what Claude Code sends on every call: `overhead` measures the fixed
+// per-call context baseline, `analyze` is the step-0 tool-output ceiling.
 package main
 
 import (
 	"flag"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,9 +16,11 @@ import (
 )
 
 const usage = `usage:
-  ctxwinnow analyze [--root DIR] [--only PREFIX]... [--exclude PREFIX]... [--group LABEL=PREFIX]...
-                    [--min-turns N] [-o FILE]
-  ctxwinnow --version
+  ctxwinnow overhead [--root DIR] [--since T] [--until T] [--min-turns N] [--compare T]
+                     [--only PREFIX]... [--exclude PREFIX]... [--redact] [-o FILE]
+  ctxwinnow analyze  [--root DIR] [--only PREFIX]... [--exclude PREFIX]... [--group LABEL=PREFIX]...
+                     [--min-turns N] [-o FILE]
+  ctxwinnow --version | -h | --help | help
 `
 
 func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr)) }
@@ -32,6 +34,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 	case "--version", "version":
 		fmt.Fprintln(stdout, "ctxwinnow", version.Version)
 		return 0
+	case "-h", "--help", "help":
+		fmt.Fprint(stdout, usage)
+		return 0
+	case "overhead":
+		return overheadCmd(args[1:], stdout, stderr)
 	case "analyze":
 		return analyze(args[1:], stdout, stderr)
 	}
@@ -47,8 +54,7 @@ func (m *multiFlag) Set(v string) error { *m = append(*m, v); return nil }
 func analyze(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("analyze", flag.ContinueOnError)
 	flags.SetOutput(stderr)
-	home, _ := os.UserHomeDir()
-	root := flags.String("root", filepath.Join(home, ".claude", "projects"), "directory scanned recursively for *.jsonl")
+	root := flags.String("root", "", "transcripts directory, scanned recursively for *.jsonl (default $CLAUDE_CONFIG_DIR/projects, else ~/.claude/projects)")
 	var only, exclude, groups multiFlag
 	flags.Var(&only, "only", "keep only sessions whose cwd is PREFIX or lies under it (repeatable)")
 	flags.Var(&exclude, "exclude", "drop sessions whose cwd is PREFIX or lies under it (repeatable)")
@@ -76,65 +82,27 @@ func analyze(args []string, stdout, stderr io.Writer) int {
 		opt.Groups = append(opt.Groups, ceiling.Group{Label: label, Prefix: prefix})
 	}
 
-	res, err := scan(*root, opt)
+	dir, err := resolveRoot(*root, defaultRoots(os.Getenv, os.UserHomeDir))
 	if err != nil {
 		fmt.Fprintln(stderr, "ctxwinnow:", err)
 		return 1
 	}
-	if *out == "" {
-		err = ceiling.Render(stdout, res)
-	} else {
-		err = writeFile(*out, res)
-	}
+	a := ceiling.NewAnalyzer(opt)
+	skipped, err := walkTranscripts(dir, stderr, func(rel string, s *transcript.Session) {
+		a.AddSession(s, strings.Contains("/"+filepath.ToSlash(rel), "/subagents/"))
+	})
 	if err != nil {
+		fmt.Fprintln(stderr, "ctxwinnow:", err)
+		return 1
+	}
+	if skipped > 0 {
+		fmt.Fprintf(stderr, "ctxwinnow: %d files skipped\n", skipped)
+	}
+	res := a.Result()
+	res.Version = version.Version
+	if err := writeReport(*out, stdout, func(w io.Writer) error { return ceiling.Render(w, res) }); err != nil {
 		fmt.Fprintln(stderr, "ctxwinnow:", err)
 		return 1
 	}
 	return 0
-}
-
-func writeFile(path string, res ceiling.Result) error {
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	err = ceiling.Render(f, res)
-	if cerr := f.Close(); err == nil {
-		err = cerr
-	}
-	return err
-}
-
-// scan parses every *.jsonl under root; files under a "subagents" directory are subagent sessions.
-func scan(root string, opt ceiling.Options) (ceiling.Result, error) {
-	if _, err := os.Stat(root); err != nil {
-		return ceiling.Result{}, err
-	}
-	a := ceiling.NewAnalyzer(opt)
-	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() || filepath.Ext(p) != ".jsonl" {
-			return nil
-		}
-		f, err := os.Open(p)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		s, err := transcript.Parse(f)
-		if err != nil {
-			return fmt.Errorf("%s: %w", p, err)
-		}
-		rel, relErr := filepath.Rel(root, p)
-		if relErr != nil {
-			rel = p
-		}
-		a.AddSession(s, strings.Contains("/"+filepath.ToSlash(rel), "/subagents/"))
-		return nil
-	})
-	res := a.Result()
-	res.Version = version.Version
-	return res, err
 }

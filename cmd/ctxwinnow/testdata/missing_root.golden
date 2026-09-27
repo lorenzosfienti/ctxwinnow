@@ -1,0 +1,4 @@
+ctxwinnow: no transcripts directory found; tried:
+  <TMP>/cfg/projects
+  <TMP>/home/.claude/projects
+pass --root DIR to point at your Claude Code projects directory
