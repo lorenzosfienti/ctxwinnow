@@ -175,6 +175,21 @@ func TestRenderLimitationsAuthorFigures(t *testing.T) {
 	}
 }
 
+// TestPresenceTextVersion: the presence sentence prints only a dotted numeric Claude Code version,
+// like the header; any other string is "unknown version" and never reaches the report.
+func TestPresenceTextVersion(t *testing.T) {
+	for _, c := range []struct{ version, want string }{
+		{"2.1.283", "Artifact last sent on 2026-09-03 (Claude Code 2.1.283), in the most recent session with a tool snapshot."},
+		{"", "Artifact last sent on 2026-09-03 (Claude Code unknown version), in the most recent session with a tool snapshot."},
+		{"/home/zzuser/LEAKMARK", "Artifact last sent on 2026-09-03 (Claude Code unknown version), in the most recent session with a tool snapshot."},
+	} {
+		got := presenceText("Artifact", &Presence{LastSent: instant("2026-09-03T10:00:00Z"), LastVersion: c.version})
+		if got != c.want {
+			t.Errorf("presenceText(version %q) = %q, want %q", c.version, got, c.want)
+		}
+	}
+}
+
 // TestRenderP90 prints B p90 only from MinP90N sessions.
 func TestRenderP90(t *testing.T) {
 	var xs []tsess

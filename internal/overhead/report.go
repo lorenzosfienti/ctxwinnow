@@ -494,7 +494,7 @@ func presenceText(tool string, pr *Presence) string {
 		return tool + " was not sent in any eligible main session with a tool snapshot."
 	}
 	version := pr.LastVersion
-	if version == "" {
+	if !validVersion(version) {
 		version = "unknown version"
 	}
 	sent := fmt.Sprintf("%s last sent on %s (Claude Code %s)", tool, fmtDay(pr.LastSent), mdEscape(version))
