@@ -39,8 +39,10 @@ standard library only. Portfolio project.
 - Standard library only; nothing newer than Go 1.26 (`go.mod` says `go 1.26.0`; `go vet` checks it).
 - The version lives only in `internal/version.Version`. Bump it together with `CHANGELOG.md`, and never leave
   entries under `[Unreleased]` (a test and CI enforce the match).
-- Releases are automatic: bump `internal/version.Version` and add the `## [X.Y.Z] - YYYY-MM-DD` heading, push
-  `main`; the release workflow tags `vX.Y.Z` after vet, tests and build pass, and publishes the archives (no manual
+- `main` is protected: changes land only through a squash-merged pull request with green CI (the six `test` jobs
+  and `govulncheck`); no direct push, force push or deletion. Work on a branch, open a PR, merge it.
+- Releases are automatic: bump `internal/version.Version` and add the `## [X.Y.Z] - YYYY-MM-DD` heading in the PR;
+  when it is merged into `main` the release workflow tags `vX.Y.Z` after vet, tests and build pass, and publishes the archives (no manual
   tag; a released version is a no-op). Never move or delete a pushed tag (the Go proxy and checksum database keep the
   first content): fix forward with a patch release.
 - No real transcripts or reports in the repo: `reports/` and `dist/` are gitignored and fixtures are synthetic.
