@@ -26,7 +26,8 @@ go test ./cmd/ctxwinnow/ -run TestMissingRoot -update
 ```
 
 Add a line to the `[Unreleased]` section of `CHANGELOG.md`. The maintainer assigns the version:
-a push to `main` with a new `internal/version.Version` tags and publishes the release automatically.
+merging a pull request with a new `internal/version.Version` into `main` tags and publishes the release automatically.
+`main` accepts only squash-merged pull requests with green CI.
 
 Use conventional commit messages (`feat:`, `fix:`, `docs:`, `ci:` …).
 
