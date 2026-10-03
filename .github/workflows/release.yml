@@ -27,7 +27,7 @@ jobs:
           fetch-depth: 0
       # Build with the latest stable toolchain so the binaries carry its standard-library security
       # fixes; go.mod keeps the minimum language version, which the CI matrix also tests.
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: stable
       - name: Version and CHANGELOG agree
