@@ -7,12 +7,12 @@ standard library only. Portfolio project.
 
 ## Status
 
-- v0.2.0 (committed locally, not tagged or pushed): `ctxwinnow overhead` with levers and `--compare`; `analyze`
-  calibration fix; CI matrix; tag-driven release workflow.
+- v0.2.0 (published 2026-10-03, github.com/lorenzosfienti/ctxwinnow): `ctxwinnow overhead` with levers and
+  `--compare`; `analyze` calibration fix; CI matrix; tag-driven release workflow. Acceptance passed: live run on
+  `~/.claude/projects` and `--compare` after the Artifact change (2026-10-03: paired delta -9,871 tokens, noise
+  floor ±3,790, Artifact removed).
 - v0.1.0: step 0 (`ctxwinnow analyze`), verdict RETHINK on 2026-09-26 (median compressible share 0.0%). The
   compression engine and proxy are dropped.
-- Next (owner): the `--compare` acceptance after the Artifact change (the live acceptance on `~/.claude/projects`
-  passed); only then create the public repo and push `v0.1.0` and `v0.2.0` together.
 
 ## Commands
 
