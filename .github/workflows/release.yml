@@ -1,10 +1,18 @@
 name: release
+# Releases itself: a push to main whose internal/version.Version has no release yet creates the
+# vX.Y.Z tag (if missing), builds the archives and publishes the release. A pushed tag or a manual
+# run does the same; a version that is already released is a no-op, so every trigger is safe.
 on:
   push:
+    branches: [main]
     tags:
       - "v*.*.*"
+  workflow_dispatch:
 permissions:
   contents: write
+concurrency:
+  group: release
+  cancel-in-progress: false
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -15,21 +23,41 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - run: go vet ./...
-      - run: go test ./...
-      - name: Tag, version and CHANGELOG agree
+      - name: Version and CHANGELOG agree
         run: |
           V=$(go run ./cmd/ctxwinnow --version | cut -d' ' -f2)
-          if [ "$GITHUB_REF_NAME" != "v$V" ]; then
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "v$V" ]; then
             echo "tag $GITHUB_REF_NAME does not match internal/version.Version $V" >&2
             exit 1
           fi
           grep -q "^## \[$V\] - " CHANGELOG.md || { echo "CHANGELOG.md has no '## [$V] - ' heading" >&2; exit 1; }
           echo "V=$V" >> "$GITHUB_ENV"
+      - name: Skip if already released
+        run: |
+          if gh release view "v$V" >/dev/null 2>&1; then
+            echo "v$V is already released"
+            echo "SKIP=1" >> "$GITHUB_ENV"
+          fi
+      - name: Build from the existing tag, never move it
+        if: env.SKIP != '1'
+        run: |
+          if git rev-parse -q --verify "refs/tags/v$V" >/dev/null; then
+            git checkout -q "v$V"
+            T=$(go run ./cmd/ctxwinnow --version | cut -d' ' -f2)
+            [ "$T" = "$V" ] || { echo "tag v$V carries version $T" >&2; exit 1; }
+            echo "TAG_EXISTS=1" >> "$GITHUB_ENV"
+          fi
+      - if: env.SKIP != '1'
+        run: go vet ./...
+      - if: env.SKIP != '1'
+        run: go test ./...
       - name: Build archives
+        if: env.SKIP != '1'
         run: |
           mkdir -p dist
           for os in darwin linux windows; do
@@ -50,8 +78,17 @@ jobs:
           done
           (cd dist && sha256sum *.tar.gz *.zip > SHA256SUMS)
       - name: Release notes from CHANGELOG.md
+        if: env.SKIP != '1'
         run: |
           awk -v h="## [$V] - " 'index($0, h) == 1 {on = 1; next} on && /^## \[/ {exit} on {print}' CHANGELOG.md > dist/notes.md
           test -s dist/notes.md
+      - name: Tag (only after the build passed)
+        if: env.SKIP != '1' && env.TAG_EXISTS != '1'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$V" -m "ctxwinnow $V"
+          git push origin "v$V"
       - name: Publish the release
-        run: gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --notes-file dist/notes.md dist/*.tar.gz dist/*.zip dist/SHA256SUMS
+        if: env.SKIP != '1'
+        run: gh release create "v$V" --verify-tag --title "v$V" --notes-file dist/notes.md dist/*.tar.gz dist/*.zip dist/SHA256SUMS

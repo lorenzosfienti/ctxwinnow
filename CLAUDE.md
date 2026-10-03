@@ -7,6 +7,7 @@ standard library only. Portfolio project.
 
 ## Status
 
+- v0.2.1 (2026-10-03): self-releasing workflow on push to `main` (no manual tag).
 - v0.2.0 (published 2026-10-03, github.com/lorenzosfienti/ctxwinnow): `ctxwinnow overhead` with levers and
   `--compare`; `analyze` calibration fix; CI matrix; tag-driven release workflow. Acceptance passed: live run on
   `~/.claude/projects` and `--compare` after the Artifact change (2026-10-03: paired delta -9,871 tokens, noise
@@ -36,8 +37,9 @@ standard library only. Portfolio project.
 - Standard library only; nothing newer than Go 1.26 (`go.mod` says `go 1.26.0`; `go vet` checks it).
 - The version lives only in `internal/version.Version`. Bump it together with `CHANGELOG.md`, and never leave
   entries under `[Unreleased]` (a test and CI enforce the match).
-- Releases: tag `vX.Y.Z` equal to `internal/version.Version` with a `## [X.Y.Z] - YYYY-MM-DD` heading; the release
-  workflow builds the archives. Never move or delete a pushed tag (the Go proxy and checksum database keep the
+- Releases are automatic: bump `internal/version.Version` and add the `## [X.Y.Z] - YYYY-MM-DD` heading, push
+  `main`; the release workflow tags `vX.Y.Z` after vet, tests and build pass, and publishes the archives (no manual
+  tag; a released version is a no-op). Never move or delete a pushed tag (the Go proxy and checksum database keep the
   first content): fix forward with a patch release.
 - No real transcripts or reports in the repo: `reports/` and `dist/` are gitignored and fixtures are synthetic.
 - Docs stay minimal: README, CHANGELOG and this file. `docs/superpowers/` holds local specs and plans and is

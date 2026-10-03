@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-03
+
+### Changed
+- Release workflow releases itself: a push to `main` whose `internal/version.Version` has no
+  GitHub release yet creates the `vX.Y.Z` tag after vet, tests and the build pass, then publishes
+  the archives and notes. A pushed tag or a manual run does the same, an already released version
+  is a no-op, and an existing tag is built as is, never moved. The `v0.2.0` tag push did not start
+  the old tag-only workflow, so that release was built by hand with the same steps.
+
 ## [0.2.0] - 2026-09-27
 
 ### Added
