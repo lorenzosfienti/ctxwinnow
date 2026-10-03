@@ -1,5 +1,10 @@
 # ctxwinnow
 
+[![ci](https://github.com/lorenzosfienti/ctxwinnow/actions/workflows/ci.yml/badge.svg)](https://github.com/lorenzosfienti/ctxwinnow/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/lorenzosfienti/ctxwinnow)](https://github.com/lorenzosfienti/ctxwinnow/releases/latest)
+[![Go Reference](https://pkg.go.dev/badge/github.com/lorenzosfienti/ctxwinnow.svg)](https://pkg.go.dev/github.com/lorenzosfienti/ctxwinnow)
+[![license](https://img.shields.io/github/license/lorenzosfienti/ctxwinnow)](LICENSE)
+
 Separate the grain from the chaff in what your AI coding agent reads.
 
 ctxwinnow is an offline, read-only auditor for Claude Code, written in Go as a single binary with no dependencies.
@@ -24,11 +29,12 @@ With Go 1.26 or newer (the binary lands in `$(go env GOPATH)/bin`, which must be
 go install github.com/lorenzosfienti/ctxwinnow/cmd/ctxwinnow@latest
 ```
 
-Or download an archive for macOS, Linux or Windows (amd64, arm64) from the GitHub release, verify it and extract it:
+Or download an archive for macOS, Linux or Windows (amd64, arm64) from the [latest release](https://github.com/lorenzosfienti/ctxwinnow/releases/latest), verify
+it and extract it (replace `X.Y.Z` with the release version):
 
 ```bash
 shasum -a 256 -c SHA256SUMS --ignore-missing
-tar -xzf ctxwinnow_0.2.0_darwin_arm64.tar.gz ctxwinnow
+tar -xzf ctxwinnow_X.Y.Z_darwin_arm64.tar.gz ctxwinnow
 xattr -d com.apple.quarantine ctxwinnow   # macOS, only for files downloaded with a browser
 ```
 

@@ -2,6 +2,8 @@ name: ci
 on:
   push:
   pull_request:
+permissions:
+  contents: read
 defaults:
   run:
     shell: bash
@@ -14,12 +16,12 @@ jobs:
         go: [go.mod, stable]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         if: matrix.go == 'go.mod'
         with:
           go-version-file: go.mod
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         if: matrix.go == 'stable'
         with:
           go-version: stable
@@ -32,11 +34,20 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
       - name: CHANGELOG.md has a heading for the current version
         run: |
           V=$(go run ./cmd/ctxwinnow --version | cut -d' ' -f2)
           grep -q "^## \[$V\] - " CHANGELOG.md || { echo "CHANGELOG.md has no '## [$V] - ' heading" >&2; exit 1; }
+  govulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version: stable
+      - name: Known vulnerabilities in the code paths and the Go toolchain
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...

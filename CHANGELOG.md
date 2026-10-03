@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-10-03
+
+### Added
+- Security policy with private vulnerability reporting, contributing guide, code of conduct,
+  issue and pull request templates (under `.github/`).
+- CI runs `govulncheck` on the latest stable Go; Dependabot keeps the GitHub Actions up to date.
+
+### Changed
+- Release archives are built with the latest stable Go toolchain, so they carry its
+  standard-library security fixes; `go.mod` still sets the minimum version, tested in CI.
+- GitHub Actions are pinned to commit SHAs and the CI token is explicitly read-only.
+- README: badges and a version-independent archive example.
+
 ## [0.2.1] - 2026-10-03
 
 ### Changed

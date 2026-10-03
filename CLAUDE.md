@@ -7,6 +7,8 @@ standard library only. Portfolio project.
 
 ## Status
 
+- v0.2.2 (2026-10-03): open-source hardening (security policy, community files, pinned Actions, govulncheck,
+  protected `main` and `v*` tags, release built with stable Go).
 - v0.2.1 (2026-10-03): self-releasing workflow on push to `main` (no manual tag).
 - v0.2.0 (published 2026-10-03, github.com/lorenzosfienti/ctxwinnow): `ctxwinnow overhead` with levers and
   `--compare`; `analyze` calibration fix; CI matrix; tag-driven release workflow. Acceptance passed: live run on
@@ -42,7 +44,8 @@ standard library only. Portfolio project.
   tag; a released version is a no-op). Never move or delete a pushed tag (the Go proxy and checksum database keep the
   first content): fix forward with a patch release.
 - No real transcripts or reports in the repo: `reports/` and `dist/` are gitignored and fixtures are synthetic.
-- Docs stay minimal: README, CHANGELOG and this file. `docs/superpowers/` holds local specs and plans and is
+- Docs stay minimal: README, CHANGELOG and this file at the root; community and security files live in `.github/`
+  (SECURITY, CONTRIBUTING, CODE_OF_CONDUCT, issue and PR templates). `docs/superpowers/` holds local specs and plans and is
   gitignored on purpose.
 - Commits use conventional messages and carry no AI attribution.
 

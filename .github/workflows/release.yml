@@ -22,12 +22,14 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v5
+      # Build with the latest stable toolchain so the binaries carry its standard-library security
+      # fixes; go.mod keeps the minimum language version, which the CI matrix also tests.
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
-          go-version-file: go.mod
+          go-version: stable
       - name: Version and CHANGELOG agree
         run: |
           V=$(go run ./cmd/ctxwinnow --version | cut -d' ' -f2)

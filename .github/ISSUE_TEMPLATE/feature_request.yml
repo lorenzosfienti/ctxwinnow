@@ -1,0 +1,17 @@
+name: Feature request
+description: A new measurement, lever or option.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What do you want to measure or decide, and why the current report does not answer it.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+    validations:
+      required: false
