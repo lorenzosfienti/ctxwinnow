@@ -7,6 +7,7 @@ standard library only. Portfolio project.
 
 ## Status
 
+- v0.2.3 (2026-10-03): README demo GIF.
 - v0.2.2 (2026-10-03): open-source hardening (security policy, community files, pinned Actions, govulncheck,
   protected `main` and `v*` tags, release built with stable Go).
 - v0.2.1 (2026-10-03): self-releasing workflow on push to `main` (no manual tag).

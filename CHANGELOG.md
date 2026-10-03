@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-10-03
+
+### Added
+- README: a 25-second demo GIF (`.github/assets/demo.gif`) of the fixed per-call baseline, the unused
+  Artifact tool and the measured `--compare` saving, from the author's sessions.
+
 ## [0.2.2] - 2026-10-03
 
 ### Added

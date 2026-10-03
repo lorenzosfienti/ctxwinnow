@@ -7,6 +7,8 @@
 
 Separate the grain from the chaff in what your AI coding agent reads.
 
+![ctxwinnow: every Claude Code call re-reads 52,029 tokens; the Artifact tool costs ≈13k of them; after removing it the baseline drops to 39,295 (measured on the author's sessions)](.github/assets/demo.gif)
+
 ctxwinnow is an offline, read-only auditor for Claude Code, written in Go as a single binary with no dependencies.
 `ctxwinnow overhead` answers three questions from your own transcripts:
 
